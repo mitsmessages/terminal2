@@ -179,6 +179,20 @@ def block(fin, cf):
     return rev, gp, oi, ebitda, ni, ocf, capex, fcf
 
 
+def _div_yield(info, price):
+    """Version-proof dividend yield in PERCENT."""
+    rate = info.get("dividendRate")          # currency per share, unambiguous
+    if rate and price:
+        return round(rate / price * 100, 2)
+    dy = info.get("dividendYield")
+    if not dy:
+        return 0.0
+    # Heuristic: no sane yield is below 0.25% AND expressible as a fraction
+    # ambiguity — if the value is < 0.25 it's almost certainly a fraction
+    # (0.005 = 0.5%), so scale it; otherwise it's already percent.
+    return round(dy * 100, 2) if dy < 0.25 else round(dy, 2)
+
+
 def pull(sym, mkt):
     yq = sym + (".NS" if mkt == "IN" else "")
     tk = yf.Ticker(yq)
@@ -235,7 +249,11 @@ def pull(sym, mkt):
         "pe": info.get("trailingPE"), "fpe": info.get("forwardPE"),
         "pb": info.get("priceToBook"), "ps": info.get("priceToSalesTrailing12Months"),
         "evEbitda": info.get("enterpriseToEbitda"),
-        "divYield": round((info.get("dividendYield") or 0), 2),
+        # B7 fix: yfinance changed dividendYield semantics across versions
+        # (fraction 0.005 vs percent 0.5). Computing it ourselves from
+        # dividendRate / price is version-proof; the raw field is only a
+        # fallback, normalized if it's obviously a fraction.
+        "divYield": _div_yield(info, price),
         "roe": round((info.get("returnOnEquity") or 0) * 100, 2) if info.get("returnOnEquity") else None,
         "roa": round((info.get("returnOnAssets") or 0) * 100, 2) if info.get("returnOnAssets") else None,
         "beta": info.get("beta"),
@@ -291,7 +309,24 @@ def main():
     except Exception:
         pass  # first run ever, or file missing/corrupt -- fine, just no history yet
 
-    out, jobs = [], [(s, "US") for s in US] + [(s, "IN") for s in IN]
+    # Custom tickers: the Portfolio tab writes/downloads custom_tickers.json
+    # ({"US":["TICK"], "IN":["TICK"]}) — drop it in the repo root and the
+    # next pipeline run analyzes those stocks with the exact same logic as
+    # the built-in universe. No code editing required.
+    custom = {"US": [], "IN": []}
+    try:
+        c = json.load(open("custom_tickers.json"))
+        custom["US"] = [t.strip().upper() for t in c.get("US", []) if t.strip()]
+        custom["IN"] = [t.strip().upper() for t in c.get("IN", []) if t.strip()]
+        if custom["US"] or custom["IN"]:
+            print(f"custom_tickers.json: +{len(custom['US'])} US, +{len(custom['IN'])} IN")
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print(f"custom_tickers.json present but unreadable ({e}) — skipping it")
+    us_all = list(dict.fromkeys(US + custom["US"]))   # dedupe, keep order
+    in_all = list(dict.fromkeys(IN + custom["IN"]))
+    out, jobs = [], [(s, "US") for s in us_all] + [(s, "IN") for s in in_all]
     est_min = round(len(jobs) * 1.0 / 60, 1)
     print(f"Fetching {len(jobs)} tickers (~{est_min} min at 1 req/sec)...\n")
     for i, (s, m) in enumerate(jobs, 1):

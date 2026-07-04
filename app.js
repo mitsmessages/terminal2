@@ -36,6 +36,8 @@ const State = {
   veteranOpen: null,
   veteranView: "sector",
   veteranMkt: "ALL",
+  funnel: null,   // lazy-loaded by renderWorkflow() from localStorage
+  portfolio: null, // lazy-loaded by renderPortfolio() from localStorage
 };
 
 function saveWatchlist(){ localStorage.setItem("terminal_watchlist", JSON.stringify(State.watchlist)); }
@@ -68,8 +70,14 @@ fetch("reactions.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
 let ESTIMATES_DATA = {};
 fetch("estimates.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
   if(Array.isArray(d)) d.forEach(rec=>{ if(rec.ticker) ESTIMATES_DATA[rec.ticker]=rec; });
+  // A1 fix: replace the pipeline's hardcoded growth (8% for nearly every
+  // stock) with real analyst consensus wherever coverage exists, so the DCF
+  // and the Analyst Outlook panel can never tell contradictory stories on
+  // the same tearsheet. computeRows() re-runs on render, so every intrinsic
+  // value, margin of safety, and quadrant downstream updates automatically.
+  applyEstimatesGrowth(State.data, ESTIMATES_DATA);
   render();
-}).catch(()=>{ /* fine — analyst outlook panel shows a setup message instead */ });
+}).catch(()=>{ /* fine — analyst outlook panel shows a setup message instead; DCF falls back to the labeled default growth */ });
 
 let VERIFY_US = null;
 fetch("verify_us.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
@@ -184,6 +192,8 @@ function renderHeader(){
       <span class="brand" data-home style="cursor:pointer"><span class="dot">▮▮</span> TERMINAL</span>
       <div class="tabs">
         <button data-tab="stocks" class="${State.tab==='stocks'?'on':''}">Stocks</button>
+        <button data-tab="workflow" class="${State.tab==='workflow'?'on':''}">Workflow</button>
+        <button data-tab="portfolio" class="${State.tab==='portfolio'?'on':''}">Portfolio</button>
         <button data-tab="sectors" class="${State.tab==='sectors'?'on':''}">Sectors &amp; cycles</button>
         <button data-tab="compare" class="${State.tab==='compare'?'on':''}">Compare${State.compare.length?` (${State.compare.length})`:''}</button>
         <button data-tab="playbook" class="${State.tab==='playbook'?'on':''}">Playbook</button>
@@ -305,7 +315,7 @@ function renderScreener(){
     </tbody>
   </table>
   </div>
-  <p class="hint">Showing ${rows.length} of ${State.data.length} stocks. Click any row for the full tearsheet. Score blends growth, cash quality, valuation cushion, and balance-sheet health.</p>
+  <p class="hint">Showing ${rows.length} of ${State.data.length} stocks. Click any row for the full tearsheet. Score is the Decision Engine quality composite (growth 20% · profitability 20% · cash quality 25% · balance sheet 15% · returns 20%) — the same number the quadrant uses, so the table and the tearsheet can never disagree.</p>
   `;
 }
 
@@ -429,6 +439,7 @@ function renderTearsheet(t){
         <div><div class="kpiL">Market price</div><div class="dcfval">${fmtP(s.price,s.mkt)}</div></div>
         <div><div class="kpiL">Gap</div><div class="dcfval" style="color:${clr(s.mos)}">${sign(s.mos)}</div></div>
       </div>
+      <p class="hint" style="margin:6px 0 2px">Starting growth: <b>${s.g?.toFixed(1)}%</b> — ${s.gSource || "default assumption — run fetch_estimates.py to use real analyst consensus"}. This is the single most important input to this valuation.</p>
       <div class="dcfsliders">
         <label>Discount ${State.discount}%</label><input type="range" min="6" max="16" value="${State.discount}" id="discountSlider"/>
         <label>Terminal ${State.termGrowth}%</label><input type="range" min="1" max="5" value="${State.termGrowth}" id="termSlider"/>
@@ -765,7 +776,7 @@ function renderValuationPanel(s, allRows){
     <div class="kv">
       <div class="kvrow"><span class="kvk">P/E vs sector median</span><span class="kvv" style="color:${val.peVsSector==null?'inherit':val.peVsSector<-10?'var(--good)':val.peVsSector>10?'var(--warn)':'inherit'}">${val.peVsSector==null?"—":sign(val.peVsSector)}</span></div>
       <div class="kvrow"><span class="kvk">Sector median P/E</span><span class="kvv">${val.sectorMedianPE==null?"—":val.sectorMedianPE.toFixed(1)+"× ("+val.peerCount+" peers)"}</span></div>
-      <div class="kvrow"><span class="kvk">FCF yield vs risk-free rate</span><span class="kvv" style="color:${val.fcfYieldSpread==null?'inherit':val.fcfYieldSpread>2?'var(--good)':val.fcfYieldSpread<0?'var(--warn)':'inherit'}">${val.fcfYieldSpread==null?"—":sign(val.fcfYieldSpread)+" pts"}</span></div>
+      <div class="kvrow"><span class="kvk">FCF yield vs ${val.riskFreeLabel||"risk-free rate"}</span><span class="kvv" style="color:${val.fcfYieldSpread==null?'inherit':val.fcfYieldSpread>2?'var(--good)':val.fcfYieldSpread<0?'var(--warn)':'inherit'}">${val.fcfYieldSpread==null?"—":sign(val.fcfYieldSpread)+" pts"}${val.fcfYieldSpread==null&&val.riskFreeLabel==="India 10Y G-Sec"?" (India 10Y not loaded — run fetch_macro.py)":""}</span></div>
       <div class="kvrow"><span class="kvk">52-week range position</span><span class="kvv">${val.pricePos==null?"—":val.pricePos.toFixed(0)+"% (0=low, 100=high)"}</span></div>
       <div class="kvrow"><span class="kvk">Price / Tangible book</span><span class="kvv">${ext.priceToTangibleBook==null?"—":ext.priceToTangibleBook.toFixed(2)+"×"}</span></div>
       <div class="kvrow"><span class="kvk">LBO-implied price (~20% IRR)</span><span class="kvv" style="color:${ext.lboGapPct==null?'inherit':ext.lboGapPct>15?'var(--good)':ext.lboGapPct<-15?'var(--warn)':'inherit'}">${ext.lboImpliedPrice==null?"—":fmtP(ext.lboImpliedPrice,s.mkt)+" ("+sign(ext.lboGapPct)+")"}</span></div>
@@ -1013,7 +1024,7 @@ function renderCompare(){
     ["ROA", s=>s.roa==null?"—":s.roa.toFixed(0)+"%"],
     ["Net debt / EBITDA", s=>s.debtToEbitda==null?(s.debt<0?"net cash":"—"):s.debtToEbitda.toFixed(1)+"×"],
     ["Net debt / Mkt cap", s=>(s.debt/s.mcap*100).toFixed(0)+"%"],
-    ["Health score", s=>s.healthScore, s=>s.healthScore>66?"var(--good)":s.healthScore>40?"var(--neutral)":"var(--warn)"],
+    ["Quality score", s=>s.healthScore, s=>s.healthScore>66?"var(--good)":s.healthScore>40?"var(--neutral)":"var(--warn)"],
     ["Signal", s=>s.verdict.l, s=>s.verdict.c],
   ];
 
@@ -1758,7 +1769,7 @@ function render(){
     ${renderHeader()}
     <div class="wrap">
       ${renderWatchDrawer()}
-      ${State.tab==="sectors" ? renderSectors() : State.tab==="compare" ? renderCompare() : State.tab==="playbook" ? renderPlaybook() : State.tab==="learn" ? renderLearn() : State.tab==="veteran" ? renderVeteran() : (State.sel ? renderTearsheet(State.sel) : renderScreener())}
+      ${State.tab==="portfolio" ? renderPortfolio() : State.tab==="workflow" ? renderWorkflow() : State.tab==="sectors" ? renderSectors() : State.tab==="compare" ? renderCompare() : State.tab==="playbook" ? renderPlaybook() : State.tab==="learn" ? renderLearn() : State.tab==="veteran" ? renderVeteran() : (State.sel ? renderTearsheet(State.sel) : renderScreener())}
     </div>
   `;
   wireEvents();
@@ -1768,6 +1779,8 @@ function wireEvents(){
   const root = document.getElementById("root");
 
   root.querySelectorAll("[data-tab]").forEach(el=>el.onclick=()=>{State.tab=el.dataset.tab;State.sel=null;render();});
+  if (typeof wireWorkflow === "function" && State.tab === "workflow") wireWorkflow(root);
+  if (typeof wirePortfolio === "function" && State.tab === "portfolio") wirePortfolio(root);
   const homeLink=root.querySelector("[data-home]");
   if(homeLink) homeLink.onclick=()=>{State.tab="stocks";State.sel=null;State.preset="all";State.mkt="ALL";State.capTier="ALL";State.q="";render();window.scrollTo(0,0);};
   const watchToggle=document.getElementById("watchToggle");
@@ -1839,9 +1852,12 @@ function wireEvents(){
   root.querySelectorAll("[data-view]").forEach(el=>el.onclick=()=>{State.view=el.dataset.view;render();});
 
   const discountSlider=document.getElementById("discountSlider");
-  if(discountSlider) discountSlider.oninput=e=>{State.discount=+e.target.value;render();};
+  // B8 fix: keep terminal growth at least 2pts below the discount rate —
+  // as they converge, the Gordon terminal-value denominator (r − g) goes to
+  // zero and the intrinsic value explodes into a meaningless number.
+  if(discountSlider) discountSlider.oninput=e=>{State.discount=+e.target.value; if(State.termGrowth>State.discount-2) State.termGrowth=Math.max(1,State.discount-2); render();};
   const termSlider=document.getElementById("termSlider");
-  if(termSlider) termSlider.oninput=e=>{State.termGrowth=+e.target.value;render();};
+  if(termSlider) termSlider.oninput=e=>{State.termGrowth=Math.min(+e.target.value, Math.max(1,State.discount-2)); render();};
 
   const learnToggle=document.getElementById("learnToggle");
   if(learnToggle) learnToggle.onclick=()=>{State.learnMode=!State.learnMode;render();};

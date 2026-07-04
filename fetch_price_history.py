@@ -41,10 +41,23 @@ def pull_history(ticker, mkt):
         return None
     dates = [d.strftime("%Y-%m-%d") for d in hist.index]
     closes = [round(float(c), 2) for c in hist["Close"]]
-    return dates, closes
+    # Average daily traded VALUE over the last ~quarter (13 weekly bars):
+    # weekly Volume x Close / 5 trading days. Feeds the Stage 6 liquidity
+    # check ("is my position <= 5% of a typical day's trading?").
+    # Scaled: IN -> ₹ crore/day, US -> $ million/day.
+    adv = None
+    try:
+        recent = hist.tail(13)
+        vals = (recent["Close"] * recent["Volume"]).dropna()
+        if len(vals) >= 4:
+            daily = float(vals.mean()) / 5.0
+            adv = round(daily / (1e7 if mkt == "IN" else 1e6), 2)
+    except Exception:
+        pass
+    return dates, closes, adv
 
 
-def main(use_test_list=True):
+def main(use_test_list=False):
     tickers = [(t, "US") for t in TEST_TICKERS] if use_test_list else load_universe()
     print(f"\nPrice history fetch — {len(tickers)} tickers")
     print("Source: Yahoo Finance weekly closes, 2yr window (free, via yfinance)")
@@ -64,9 +77,9 @@ def main(use_test_list=True):
             if r is None:
                 print("no data, skipping")
                 continue
-            dates, closes = r
-            results[ticker] = {"ticker": ticker, "dates": dates, "closes": closes}
-            print(f"{len(dates)} weekly points")
+            dates, closes, adv = r
+            results[ticker] = {"ticker": ticker, "dates": dates, "closes": closes, "adv": adv}
+            print(f"{len(dates)} weekly points" + (f", ADV {adv}" if adv else ""))
         except Exception as e:
             print(f"error: {e}")
         time.sleep(SLEEP_SEC)
@@ -79,4 +92,4 @@ def main(use_test_list=True):
 
 
 if __name__ == "__main__":
-    main(use_test_list=True)
+    main(use_test_list=False)  # full universe by default — Stage 6 liquidity needs coverage
