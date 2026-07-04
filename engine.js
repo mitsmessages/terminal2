@@ -38,19 +38,19 @@ const SAMPLE=[
   {pe:29,fpe:26,pb:9,ps:11,evEbitda:18,divYield:0.3,roe:36,roa:24,beta:1.2,high52:740,low52:442},
   {revenue:[164,135,116,118],grossProfit:[134,108,92,93],operatingIncome:[69,47,29,47],ebitda:[87,62,42,57],netIncome:[62,39,23,39],ocf:[91,71,50,57],capex:[-37,-28,-32,-19],fcf:[54,43,18,38]},
   {revenue:[48,41,39,36,40,34,32,29],operatingIncome:[23,17,15,14,16,13,11,7],ebitda:[28,22,20,18,21,18,15,11],netIncome:[21,16,13,12,14,12,8,5],fcf:[13,15,11,15,12,10,5,11]}),
- mk("RELIANCE","Reliance Industries","IN","Energy","Oil & Gas Refining",1490,1353,201600,317600,116000,10,
+ mk("RELIANCE","Reliance Industries","IN","Energy","Oil & Gas Refining",1490,1353,2015970,2131970,116000,10,
   {pe:25,fpe:21,pb:2.1,ps:2.0,evEbitda:11,divYield:0.4,roe:8.5,roa:3.8,beta:1.0,high52:1609,low52:1115,insiderPct:50.3,prevInsiderPct:50.6},
   {revenue:[1000000,974000,976000,792000],grossProfit:null,operatingIncome:[145000,138000,130000,110000],ebitda:[178000,166000,158000,128000],netIncome:[79000,73000,67000,60000],ocf:[160000,115000,110000,98000],capex:[-125000,-118000,-141000,-95000],fcf:[35000,-3000,-31000,3000]},
   {revenue:[267000,258000,250000,236000],operatingIncome:[40000,38000,36000,34000],ebitda:[48000,45000,44000,42000],netIncome:[21000,19000,18000,17000],fcf:[12000,8000,9000,6000]}),
- mk("TCS","Tata Consultancy","IN","Technology","IT Services",3450,362,124890,74890,-50000,9,
+ mk("TCS","Tata Consultancy","IN","Technology","IT Services",3450,362,1248900,1198900,-50000,9,
   {pe:27,fpe:25,pb:14,ps:6.0,evEbitda:18,divYield:1.4,roe:51,roa:38,beta:0.7,high52:4585,low52:3060},
   {revenue:[255000,240000,225000,191000],grossProfit:null,operatingIncome:[62000,57000,53000,46000],ebitda:[68000,63000,58000,50000],netIncome:[46000,45000,42000,38000],ocf:[48000,42000,40000,35000],capex:[-6000,-4000,-3000,-3000],fcf:[42000,38000,37000,32000]},
   {revenue:[64000,64000,62000,61000],operatingIncome:[16000,15500,15000,15000],ebitda:[17500,17000,16500,16000],netIncome:[12000,11900,11000,11000],fcf:[11000,10000,10500,10000]}),
- mk("HDFCBANK","HDFC Bank","IN","Financial Services","Banks—Regional",1980,765,151470,151470,0,14,
+ mk("HDFCBANK","HDFC Bank","IN","Financial Services","Banks—Regional",1980,765,1514700,1514700,0,14,
   {pe:21,fpe:18,pb:2.8,ps:4.6,evEbitda:null,divYield:1.0,roe:17,roa:1.9,beta:0.9,high52:2038,low52:1588},
   {revenue:[330000,205000,170000,146000],grossProfit:null,operatingIncome:[88000,55000,46000,41000],ebitda:[90000,57000,47000,42000],netIncome:[65000,46000,44000,38000],ocf:[70000,50000,45000,40000],capex:[-5000,-4000,-3000,-3000],fcf:[65000,46000,42000,37000]},
   {revenue:[85000,82000,80000,78000],operatingIncome:[23000,22000,21000,20000],ebitda:[23500,22500,21500,20500],netIncome:[17000,16500,16000,15500],fcf:[16500,16000,15500,15000]}),
- mk("INFY","Infosys","IN","Technology","IT Services",1560,415,64740,34740,-30000,9,
+ mk("INFY","Infosys","IN","Technology","IT Services",1560,415,647400,617400,-30000,9,
   {pe:25,fpe:23,pb:8,ps:4.0,evEbitda:15,divYield:2.3,roe:32,roa:23,beta:0.8,high52:2007,low52:1352},
   {revenue:[163000,153000,146000,121000],grossProfit:null,operatingIncome:[34000,32000,31000,27000],ebitda:[37000,35000,33000,29000],netIncome:[26000,25000,24000,22000],ocf:[31000,27000,25000,23000],capex:[-3000,-2000,-2000,-2000],fcf:[28000,25000,23000,21000]},
   {revenue:[41000,40000,39000,38000],operatingIncome:[8700,8500,8200,8000],ebitda:[9400,9200,8900,8700],netIncome:[6600,6500,6400,6300],fcf:[7000,6800,6500,6200]}),
@@ -64,29 +64,86 @@ const sign = v => v==null ? "—" : `${v>0?"+":""}${v.toFixed(1)}%`;
 const xMult = v => v==null ? "—" : `${v.toFixed(1)}×`;
 const pctStr = v => v==null ? "—" : `${v.toFixed(1)}%`;
 
+/* ---------- SHARED THRESHOLDS (single source of truth) ----------
+   Every band used by BOTH the flag engine and the pillar engine lives
+   here, so the two can never drift apart and show a green flag next to
+   a weak pillar (or vice versa) for the same underlying number. */
+const THRESH = {
+  fcfNi:   { strong: 1.1, ok: 0.9, weak: 0.7 },   // FCF / Net income
+  debtEbitda: { safe: 1.5, watch: 3.0, danger: 4.0 },
+  ebitdaMargin: { premium: 30, healthy: 15 },
+  fcfYield: { rich: 5, thin: 2 },
+  peg:     { cheap: 1.0, rich: 2.5 },
+  mos:     { wide: 25, some: 10 },                 // DCF margin of safety %
+  revDecel: { concern: -5, accel: 3 },
+};
+
 /* ---------- growth math ---------- */
 const arr = v => Array.isArray(v) ? v : [];
 const yoy = s => { const a=arr(s); return (a.length>1 && a[1]) ? (a[0]-a[1])/Math.abs(a[1])*100 : null; };
 const qoq = yoy;
-const cagr = s => {
-  const a = arr(s).filter(v=>v!=null);
-  if (a.length<2 || a.some(v=>v<=0)) return null;
-  return (Math.pow(a[0]/a[a.length-1], 1/(a.length-1))-1)*100;
+/* Same-quarter YoY (index 0 vs 4 in an 8-quarter series) — the seasonality-
+   free quarterly read. Sequential QoQ stays available as secondary context. */
+const qyoy = s => { const a=arr(s); return (a.length>4 && a[4]) ? (a[0]-a[4])/Math.abs(a[4])*100 : null; };
+/* CAGR endpoint-to-endpoint with honest period counting: nulls inside the
+   series no longer shrink the year count, and a negative year in the MIDDLE
+   no longer erases the whole figure (the result is annotated instead).
+   Returns {v, note} or null when an ENDPOINT is non-positive (a true CAGR
+   genuinely doesn't exist in that case). */
+const cagrX = s => {
+  const a = arr(s);
+  let first=-1, last=-1;
+  for(let i=0;i<a.length;i++){ if(a[i]!=null){ if(first<0)first=i; last=i; } }
+  if(first<0 || last===first) return null;
+  const newest=a[first], oldest=a[last], yrs=last-first;
+  if(newest==null||oldest==null||newest<=0||oldest<=0) return null;
+  const v=(Math.pow(newest/oldest,1/yrs)-1)*100;
+  const dipped=a.slice(first,last+1).some(x=>x!=null&&x<=0);
+  return { v, note: dipped?"includes a negative year inside the window":null };
 };
+const cagr = s => { const c=cagrX(s); return c?c.v:null; };
 
-/* ---------- DCF (two-stage) ---------- */
+/* ---------- DCF (two-stage) ----------
+   Fade fix: growth is weighted by (y/years) so that in the FINAL explicit
+   year growth equals the terminal rate exactly — the old (y-1)/years weights
+   left year-N growth above terminal, a small persistent upward bias in every
+   intrinsic value. Guard: terminal value requires discount > terminal + 1pt,
+   otherwise the Gordon denominator explodes and the output is meaningless. */
 function dcf(s,{discount,termGrowth,years}){
   const r=discount/100, tg=termGrowth/100, g0=s.g/100;
+  if (r - tg < 0.01) return null; // refuse to fabricate an exploding terminal value
   const base = arr(s.annual.fcf)[0];
   if (base==null || base<=0) return null;
   let pv=0, fcf=base;
   for (let y=1;y<=years;y++){
-    const gr = g0*(1-(y-1)/years) + tg*((y-1)/years);
+    const w = y/years;                 // 1/N … 1 — reaches tg in the last year
+    const gr = g0*(1-w) + tg*w;
     fcf *= (1+gr);
     pv += fcf/Math.pow(1+r,y);
   }
   pv += (fcf*(1+tg))/(r-tg) / Math.pow(1+r,years);
   return (pv - s.debt) / s.shares;
+}
+
+/* ---------- A1: growth source (analyst consensus > hardcoded default) ----
+   Called by app.js once estimates.json loads. Replaces the pipeline's
+   hardcoded g (8% for nearly every stock) with real consensus growth where
+   coverage exists, clamped to a sane band, and records WHERE the number
+   came from so the DCF panel can label it honestly. */
+function applyEstimatesGrowth(stocks, estimatesMap){
+  stocks.forEach(s=>{
+    const est = estimatesMap && estimatesMap[s.t];
+    // Prefer revenue growth (closest to what a two-stage FCF model wants),
+    // then next-year EPS growth, then current-year EPS growth.
+    const cand = est && (est.revenueGrowthEstimate ?? est.epsGrowthNextYear ?? est.epsGrowthCurrentYear);
+    if(cand!=null && isFinite(cand)){
+      s.g = Math.max(0, Math.min(30, cand));       // clamp: 0–30% starting growth
+      s.gSource = `analyst consensus (${est.numAnalysts||"n/a"} analysts)`;
+      s.gRaw = cand;
+    } else if(!s.gSource){
+      s.gSource = "default assumption — no analyst coverage loaded; treat the DCF as low-confidence";
+    }
+  });
 }
 
 /* ---------- normalize a stock record so nothing ever crashes ---------- */
@@ -111,13 +168,24 @@ function analyze(raw, intrinsic){
 
   const revG=yoy(A.revenue), niG=yoy(A.netIncome), fcfG=yoy(A.fcf), ebitdaG=yoy(A.ebitda);
   const revQ=qoq(Q.revenue), fcfQ=qoq(Q.fcf), niQ=qoq(Q.netIncome);
+  /* A6 fix: same-quarter YoY (Q0 vs Q4) is the seasonality-free quarterly
+     read and is used as the PRIMARY quarterly signal wherever available;
+     sequential QoQ above is kept as secondary context only. */
+  const revQyoy=qyoy(Q.revenue), fcfQyoy=qyoy(Q.fcf), niQyoy=qyoy(Q.netIncome);
   const m0=A.margins[0]||{}, m1=A.margins[1]||{};
   const nmNow=m0.net??null, nmPrev=m1.net??null;
   const omNow=m0.operating??null, omPrev=m1.operating??null;
   const emNow=m0.ebitda??null;
   const fcfmNow=m0.fcf??null;
+  /* Margin trend: single-year delta fires on one-off charges/gains and is
+     too noisy. Require 2 consecutive years in the same direction.
+     marginTrend  = latest year delta (for display)
+     marginTrend2 = delta over 2 years (for signal firing) */
   const marginTrend=(nmNow!=null&&nmPrev!=null)?nmNow-nmPrev:null;
+  const nmY2 = arr(A.margins).length>2 ? A.margins[2]?.net : null;
+  const marginTrend2 = (nmNow!=null&&nmPrev!=null&&nmY2!=null) ? nmNow-nmY2 : null;
   const opMarginTrend=(omNow!=null&&omPrev!=null)?omNow-omPrev:null;
+  const opMarginTrend2=(omNow!=null&&omPrev!=null&&arr(A.margins).length>2)?omNow-(A.margins[2]?.operating??null):null;
   const f0=at0(A.fcf), ni0=at0(A.netIncome), ebitda0=at0(A.ebitda), rev0=at0(A.revenue), capex0=at0(A.capex);
   const fcfNi=(f0!=null&&ni0)?f0/ni0:null;
   const mos=intrinsic?(intrinsic-s.price)/s.price*100:null;
@@ -127,8 +195,26 @@ function analyze(raw, intrinsic){
   const ruleOf40=(revG!=null&&fcfmNow!=null)?revG+fcfmNow:null;
   const debtToEbitda=(ebitda0&&ebitda0>0)?s.debt/ebitda0:null;
   const revPrior = A.revenue.length>1 ? yoy(A.revenue.slice(1)) : null;
-  const revDecel=(revG!=null&&revPrior!=null)?revG-revPrior:null;
-  const peg=(s.pe&&niG&&niG>0)?s.pe/niG:null;
+  /* revDecel: growth-of-growth. Guard against zero-crossing sign flip:
+     prior=-5%, current=+3% reads as +8pts "acceleration" but the business
+     was actually shrinking and is now recovering — that's a different thing.
+     When the two rates straddle zero, mark as "recovery" not acceleration/decel. */
+  const revDecelRaw = (revG!=null&&revPrior!=null)?revG-revPrior:null;
+  const revDecelCrossesZero = revDecelRaw!=null && ((revPrior<0&&revG>0)||(revPrior>0&&revG<0));
+  const revDecel = revDecelCrossesZero ? null : revDecelRaw;
+  const revRecovery = revDecelCrossesZero && revG>0;   // shrinking→growing = recovery, shown as context not decel
+  /* PEG: should use EPS-per-share growth, not total net-income growth.
+     If shares changed via buybacks or dilution the two diverge significantly.
+     Use consensus EPS growth from estimates.json when coverage exists;
+     fall back to niG only as a labeled approximation. */
+  const epsG = (() => {
+    if(typeof ESTIMATES_DATA==="undefined") return null;
+    const est = ESTIMATES_DATA && ESTIMATES_DATA[s.t];
+    return est?.epsGrowthNextYear ?? est?.epsGrowthCurrentYear ?? null;
+  })();
+  const pegGrowth = epsG ?? niG;          // prefer EPS, fall back to NI growth
+  const pegSource = epsG!=null ? "eps" : "ni";
+  const peg=(s.pe&&pegGrowth&&pegGrowth>0)?+(s.pe/pegGrowth).toFixed(2):null;
   const capexIntensity=(capex0!=null&&rev0)?Math.abs(capex0)/rev0*100:null;
 
   const up=(v,t=2)=>v!=null&&v>t, dn=(v,t=-2)=>v!=null&&v<t;
@@ -143,27 +229,44 @@ function analyze(raw, intrinsic){
     `Still growing, but the rate slowed about ${Math.abs(revDecel).toFixed(0)} points versus the prior year.`,
     "Markets price the change in growth rate, not just growth itself. Deceleration is the most common trigger for a high-multiple stock falling, even while still growing.",
     "Compare each year's revenue step-up — is it shrinking? Pair with valuation: a slowing grower on a high P/E is riskier than the same slowdown on a cheap multiple.");
+  if(revRecovery)add("good","Growth","Revenue recovering (decline → growth)",
+    `Revenue grew this year after declining the prior year — a genuine turn. Note: the comparison base is easy, which flatters the growth rate.`,
+    "A shrink-to-grow reversal is meaningful but different from sustained acceleration. The easy prior-year base makes the rate look larger than the underlying momentum.",
+    "Watch next year when the base normalizes — that's when genuine vs base-effect growth separates out.");
   if(up(revG,8)&&up(fcfG,8)&&(marginTrend==null||marginTrend>-0.5))add("good","Growth","Clean compounding",
     "Revenue and free cash flow are growing together with stable margins — the highest-quality growth profile.",
     "When cash flow grows as fast as sales, the business scales without losing efficiency, letting it reinvest or return capital from its own engine.",
     "Confirm the FCF line tracks revenue rather than flattening, across several years not just one.");
-  if(up(revG)&&marginTrend!=null&&marginTrend<-1)add("warn","Margins","Margin compression",
-    "Sales grew but net margin contracted — converting less of each rupee/dollar of revenue into profit.",
-    "Shrinking margins during growth usually mean discounting to win share, or costs rising faster than pricing power can offset.",
-    "Check whether operating margin (the core business) or only net margin (often one-off items) is the one falling.");
-  if(opMarginTrend!=null&&opMarginTrend>1.5)add("good","Margins","Operating leverage",
-    `Operating margin expanded about ${opMarginTrend.toFixed(1)} points — costs growing slower than revenue.`,
-    "Once fixed costs are covered, extra revenue drops mostly to profit. Expanding margin while growing is proof the model gets more profitable at scale.",
+  if(up(revG)&&marginTrend2!=null&&marginTrend2<-2)add("warn","Margins","Margin compression (2-year trend)",
+    `Net margin contracted ${Math.abs(marginTrend2).toFixed(1)}pts over 2 years while revenue grew — not a one-off.`,
+    "Shrinking margins during growth usually mean discounting to win share, or costs rising faster than pricing power can offset. Two consecutive years rules out one-off charges.",
+    "Check whether operating margin (the core business) or only net margin (often one-off items) is falling — the operating line is the more honest read.");
+  else if(up(revG)&&marginTrend2==null&&marginTrend!=null&&marginTrend<-1)add("warn","Margins","Margin dip — 1 year only, watch for repeat",
+    `Net margin contracted ${Math.abs(marginTrend).toFixed(1)}pts last year while revenue grew. Only one year of history available — may be a one-off.`,
+    "A single year of margin pressure can be a one-off charge, a deliberate investment year, or the start of a trend. The signal exists so you track it.",
+    "If it repeats next year it becomes a confirmed trend. Check whether there was an identifiable one-off in the period.");
+  if(opMarginTrend2!=null&&opMarginTrend2>2)add("good","Margins","Operating leverage (2-year confirmed)",
+    `Operating margin expanded about ${opMarginTrend2.toFixed(1)}pts over 2 years — fixed costs absorbing into growing revenue.`,
+    "Once fixed costs are covered, extra revenue drops mostly to profit. Expanding margin over 2 years while growing is proof the model gets more profitable at scale.",
     "Make sure margin expanded because revenue grew, not because costs were cut in a shrinking business.");
+  else if(opMarginTrend2==null&&opMarginTrend!=null&&opMarginTrend>1.5)add("good","Margins","Operating leverage (1-year — confirm next)",
+    `Operating margin expanded about ${opMarginTrend.toFixed(1)}pts last year. Promising — needs a second year to confirm it isn't a one-off.`,
+    "One year of margin expansion could be operational leverage or could be a one-time cost saving. Two consecutive years is the confirmation.",
+    "Watch next results: if margin holds or expands further, the signal is real.");
   if(emNow!=null&&emNow>30)add("good","Margins","Premium profitability",
     `EBITDA margin near ${emNow.toFixed(0)}% — keeps an unusually large share of revenue as cash profit.`,
     "High, durable margins are the fingerprint of a moat — brand, network, or switching costs that block price competition.",
     "Check durability across years on the margin ladder chart — steady or rising is a moat, choppy is cyclical.");
-  if(fcfNi!=null&&fcfNi<0.8)add("warn","Cash quality","Low cash conversion",
+  /* Bands come from THRESH so the flag and the cash-quality pillar can never
+     disagree: warn fires at the same line as the pillar's serious penalty
+     (<0.7); good fires at the same line as the pillar's positive credit
+     (>=0.9); the 0.7-0.9 band gets no flag — the pillar's "moderate gap"
+     covers that gradation. */
+  if(fcfNi!=null&&fcfNi<THRESH.fcfNi.weak)add("warn","Cash quality","Low cash conversion",
     `Only about ${(fcfNi*100).toFixed(0)}% of reported profit shows up as cash (FCF/NI ${fcfNi.toFixed(2)}).`,
     "Net income is an accounting opinion; free cash flow is a fact. A persistent gap is one of the most reliable predictors of future disappointment.",
     "A single low year can be a capex cycle. A multi-year pattern is the real warning sign — check the Cash bridge.");
-  if(fcfNi!=null&&fcfNi>=1)add("good","Cash quality","High earnings quality",
+  if(fcfNi!=null&&fcfNi>=THRESH.fcfNi.ok)add("good","Cash quality","High earnings quality",
     `Free cash flow meets or exceeds net income (FCF/NI ${fcfNi.toFixed(2)}) — profit fully backed by cash.`,
     "No gap to hide bad news in. The quiet signature of a high-quality business.",
     "Confirm it holds across multiple years, then combine with high ROE for the gold standard.");
@@ -207,12 +310,17 @@ function analyze(raw, intrinsic){
     `ROE looks strong (${s.roe.toFixed(0)}%) but ROA is thin (${s.roa.toFixed(1)}%) — mostly borrowing, not operations.`,
     "The gap between ROE and ROA is leverage. It amplifies a mediocre underlying return and reverses violently in bad times.",
     "Normal for banks (ROA ~1%+ with mid-teens ROE is sound); a red flag elsewhere.");
-  if(revQ!=null&&revQ<-3)add("warn","Momentum","Sequential slowdown",
-    `Latest quarter revenue fell about ${Math.abs(revQ).toFixed(0)}% versus the prior quarter.`,
+  if(revQyoy!=null&&revQyoy<-3)add("warn","Momentum","Quarterly revenue declining YoY",
+    `Latest quarter revenue fell about ${Math.abs(revQyoy).toFixed(0)}% versus the SAME quarter last year${revQ!=null?` (sequentially: ${sign(revQ)})`:""}.`,
+    "Same-quarter comparison strips out seasonality — this is a genuine decline, not a festive-quarter or holiday-quarter calendar effect.",
+    "Check whether the annual trend confirms it. One down quarter can be timing; a down quarter plus decelerating annual growth is the real turn.");
+  else if(revQyoy==null&&revQ!=null&&revQ<-3)add("warn","Momentum","Sequential slowdown (seasonality not stripped)",
+    `Latest quarter revenue fell about ${Math.abs(revQ).toFixed(0)}% versus the prior quarter — but only 4 quarters of data are loaded, so this could be pure seasonality.`,
     "QoQ is the earliest read on a turning business, but also the noisiest — many businesses are seasonal.",
-    "Check the same quarter a year ago to strip out seasonality. A drop confirmed both QoQ and YoY is the real signal.");
-  if(revQ!=null&&niQ!=null&&revQ>2&&niQ>revQ*1.5)add("good","Momentum","Profit outpacing sales",
-    "Latest quarter's profit grew faster than revenue — early evidence of operating leverage or improving mix.",
+    "Treat with caution until the same quarter last year is available for comparison. A drop confirmed both QoQ and YoY is the real signal.");
+  const _rq = revQyoy ?? revQ, _nq = niQyoy ?? niQ, _qBasis = revQyoy!=null ? "vs the same quarter last year" : "sequentially (seasonality not stripped)";
+  if(_rq!=null&&_nq!=null&&_rq>2&&_nq>_rq*1.5)add("good","Momentum","Profit outpacing sales",
+    `Latest quarter's profit grew faster than revenue ${_qBasis} — early evidence of operating leverage or improving mix.`,
     "Caught early in quarterly data, this often precedes upward earnings revisions, which is what tends to move stocks.",
     "Confirm it's operational and not a one-off tax benefit or asset sale.");
 
@@ -238,13 +346,24 @@ function analyze(raw, intrinsic){
   const goods=F.filter(f=>f.s==="good").length, warns=F.filter(f=>f.s==="warn").length;
   const verdict = goods-warns>=2 ? {l:"Constructive",c:"#1a8a63"} : warns-goods>=2 ? {l:"Caution",c:"#c0392b"} : {l:"Mixed signals",c:"#b8860b"};
 
-  return { ...s, intrinsic, revG,niG,fcfG,ebitdaG,revQ,fcfQ,niQ,marginTrend,opMarginTrend,fcfNi,mos,pricePos,
-    nmNow,omNow,emNow, fcfYield,earnYield,ruleOf40,debtToEbitda,revDecel,peg,capexIntensity,insiderTrend,
+  const result = { ...s, intrinsic, revG,niG,fcfG,ebitdaG,revQ,fcfQ,niQ,revQyoy,fcfQyoy,niQyoy,
+    marginTrend,opMarginTrend,fcfNi,mos,pricePos,
+    nmNow,omNow,emNow, fcfYield,earnYield,ruleOf40,debtToEbitda,revDecel,peg,pegSource,capexIntensity,insiderTrend,
     revCagr:cagr(A.revenue), fcfCagr:cagr(A.fcf), niCagr:cagr(A.netIncome),
-    flags:F, verdict,
-    healthScore: Math.round(Math.max(0,Math.min(100,
-      50 + (goods*9) - (warns*9) + (fcfNi!=null?(fcfNi-1)*8:0) + (s.roe!=null?Math.min(s.roe,30)/3:0)
-    ))) };
+    revCagrX:cagrX(A.revenue), fcfCagrX:cagrX(A.fcf),
+    revDecelCrossesZero, revRecovery,
+    flags:F, verdict };
+  /* B1 fix: the old healthScore (50 + goods×9 − warns×9 + adjustments)
+     double-counted correlated flags and could contradict the Decision
+     Engine's quadrant on the same screen. There is now ONE quality number:
+     the same weighted pillar composite decisionSynthesis() uses. The flags
+     remain as the explanation layer; they no longer form a second score. */
+  const P = pillarScores(result);
+  result.pillars = P;
+  result.healthScore = Math.round(
+    P.growth.score*0.20 + P.profitability.score*0.20 + P.cashQuality.score*0.25 +
+    P.balanceSheet.score*0.15 + P.returns.score*0.20 );
+  return result;
 }
 
 /* ============================================================
@@ -253,18 +372,22 @@ function analyze(raw, intrinsic){
    Applied automatically once macro.json loads; no manual toggling.
    ============================================================ */
 const MACRO_SENSITIVITY = {
-  // sector label -> exposure map. Each value: -2 (strong headwind when
-  // driver rises) .. +2 (strong tailwind when driver rises)
-  "Technology":            {rates:-2, crude:0,  usdStrength:-1, ratesNote:"long-duration cash flows, hit hardest by rising discount rates"},
-  "Tech":                  {rates:-2, crude:0,  usdStrength:-1, ratesNote:"long-duration cash flows, hit hardest by rising discount rates"},
-  "Financial Services":    {rates:1,  crude:0,  usdStrength:0,  ratesNote:"higher rates can widen lending margins, but too-fast rises hurt credit"},
-  "Fin":                   {rates:1,  crude:0,  usdStrength:0,  ratesNote:"higher rates can widen lending margins, but too-fast rises hurt credit"},
-  "Energy":                {rates:0,  crude:2,  usdStrength:-1, ratesNote:"earnings track crude directly"},
-  "Consumer":              {rates:-1, crude:-1, usdStrength:0,  ratesNote:"discretionary spending softens as rates rise"},
-  "Cons":                  {rates:-1, crude:-1, usdStrength:0,  ratesNote:"discretionary spending softens as rates rise"},
-  "Health":                {rates:0,  crude:0,  usdStrength:1,  ratesNote:"defensive, largely rate-insensitive; exporters gain from weak home currency"},
-  "Comm":                  {rates:-1, crude:0,  usdStrength:0,  ratesNote:"capital-intensive, moderately rate-sensitive"},
-  "Indus":                 {rates:-1, crude:-1, usdStrength:-1, ratesNote:"capex-driven, sensitive to borrowing costs and input costs"},
+  // A2 fix: keys are yfinance's EXACT sector strings — the previous
+  // shorthand keys ("Health", "Indus", "Comm", "Consumer") matched nothing
+  // in the real data, silently disabling the macro layer for ~7 of 11
+  // sectors. Each value: -2 (strong headwind when driver rises) .. +2
+  // (strong tailwind when driver rises).
+  "Technology":             {rates:-2, crude:0,  usdStrength:-1, ratesNote:"long-duration cash flows, hit hardest by rising discount rates"},
+  "Financial Services":     {rates:1,  crude:0,  usdStrength:0,  ratesNote:"higher rates can widen lending margins, but too-fast rises hurt credit"},
+  "Energy":                 {rates:0,  crude:2,  usdStrength:-1, ratesNote:"earnings track crude directly"},
+  "Consumer Cyclical":      {rates:-1, crude:-1, usdStrength:0,  ratesNote:"discretionary spending softens as rates rise; fuel/input costs bite margins"},
+  "Consumer Defensive":     {rates:0,  crude:-1, usdStrength:0,  ratesNote:"staples demand is rate-insensitive; input costs (packaging, freight, agri) track crude"},
+  "Healthcare":             {rates:0,  crude:0,  usdStrength:1,  ratesNote:"defensive, largely rate-insensitive; exporters (Indian pharma) gain from weak home currency"},
+  "Communication Services": {rates:-1, crude:0,  usdStrength:0,  ratesNote:"capital-intensive networks and long-duration ad/streaming growth, moderately rate-sensitive"},
+  "Industrials":            {rates:-1, crude:-1, usdStrength:-1, ratesNote:"capex-driven, sensitive to borrowing costs and input costs"},
+  "Basic Materials":        {rates:0,  crude:1,  usdStrength:-1, ratesNote:"commodity producers — output prices loosely track the energy/commodity complex"},
+  "Utilities":              {rates:-2, crude:-1, usdStrength:0,  ratesNote:"bond-proxy sector — heavy debt loads and regulated returns make rising rates the dominant headwind"},
+  "Real Estate":            {rates:-2, crude:0,  usdStrength:0,  ratesNote:"financing-cost driven and valued on cap rates — the most directly rate-sensitive sector"},
 };
 function macroSensitivityFor(sec){ return MACRO_SENSITIVITY[sec] || {rates:0,crude:0,usdStrength:0,ratesNote:"no strong macro sensitivity profile on file for this sector"}; }
 
@@ -329,12 +452,20 @@ function valuationContext(stock, allStocks, macro){
   const sectorMedianPE = peerPEs.length ? peerPEs[Math.floor(peerPEs.length/2)] : null;
   const peVsSector = (stock.pe!=null && sectorMedianPE) ? (stock.pe/sectorMedianPE-1)*100 : null;
 
-  const riskFreeRate = macro?.series?.us10y?.current ?? null;
+  // A4 fix: the risk-free comparator must match the stock's market. Using
+  // the US 10-year (~4%) for Indian stocks made every NIFTY name look ~3pts
+  // cheaper on the FCF-yield spread than it really is against the Indian
+  // 10-year (~7%). If in10y isn't loaded, return null honestly rather than
+  // benchmarking against the wrong country's bond.
+  const riskFreeRate = stock.mkt==="IN"
+    ? (macro?.series?.in10y?.current ?? null)
+    : (macro?.series?.us10y?.current ?? null);
+  const riskFreeLabel = stock.mkt==="IN" ? "India 10Y G-Sec" : "US 10Y Treasury";
   const fcfYieldSpread = (stock.fcfYield!=null && riskFreeRate!=null) ? stock.fcfYield - riskFreeRate : null;
 
   const pricePos = stock.pricePos; // already 0-100 within 52wk range
 
-  return { sectorMedianPE, peVsSector, riskFreeRate, fcfYieldSpread, pricePos, peerCount: peers.length };
+  return { sectorMedianPE, peVsSector, riskFreeRate, riskFreeLabel, fcfYieldSpread, pricePos, peerCount: peers.length };
 }
 
 /* ============================================================
@@ -353,17 +484,23 @@ function computeExcessReturns(tickerReactions, allReactions){
   const peers = allReactions.filter(r=>r.sector===sector && r.ticker!==tickerReactions.ticker);
 
   return tickerReactions.returns.map(r=>{
-    // Sector benchmark = avg forward60d/90d of peers' closest-dated filing
+    // Fix: benchmark must match the SAME calendar window as the filing date.
+    // Old code took the first-available peer return regardless of date —
+    // a Q1-2023 peer return benchmarked against a Q3-2024 filing is meaningless.
+    // Now: each peer must have a filing within ±45 days of this one.
+    // Require ≥2 peers for a reliable benchmark; otherwise return null (honest).
+    const filingTs = new Date(r.date).getTime();
+    const W = 45*86400000;  // 45 days in ms
     const peerVals60 = peers.map(p=>{
-      const closest = (p.returns||[]).find(x=>x.forward60d!=null);
-      return closest ? closest.forward60d : null;
+      const m = (p.returns||[]).find(x=>x.forward60d!=null && Math.abs(new Date(x.date).getTime()-filingTs)<W);
+      return m ? m.forward60d : null;
     }).filter(v=>v!=null);
     const peerVals90 = peers.map(p=>{
-      const closest = (p.returns||[]).find(x=>x.forward90d!=null);
-      return closest ? closest.forward90d : null;
+      const m = (p.returns||[]).find(x=>x.forward90d!=null && Math.abs(new Date(x.date).getTime()-filingTs)<W);
+      return m ? m.forward90d : null;
     }).filter(v=>v!=null);
-    const bench60 = peerVals60.length ? peerVals60.reduce((a,b)=>a+b,0)/peerVals60.length : null;
-    const bench90 = peerVals90.length ? peerVals90.reduce((a,b)=>a+b,0)/peerVals90.length : null;
+    const bench60 = peerVals60.length>=2 ? peerVals60.reduce((a,b)=>a+b,0)/peerVals60.length : null;
+    const bench90 = peerVals90.length>=2 ? peerVals90.reduce((a,b)=>a+b,0)/peerVals90.length : null;
     return {
       ...r,
       excess60d: (r.forward60d!=null && bench60!=null) ? +(r.forward60d-bench60).toFixed(2) : null,
@@ -423,8 +560,8 @@ function pillarScores(s){
     if(s.marginTrend!=null && s.marginTrend<-1 && s.revG!=null && s.revG>0)e.push(_ev(`Net margin falling while revenue grows — buying growth`,-8));
     P.profitability = _mkPillar("Profitability", 50, e); }
   { const e=[];
-    if(s.fcfNi!=null){ if(s.fcfNi>=1.1)e.push(_ev(`FCF exceeds net income (${s.fcfNi.toFixed(2)}×) — profit fully cash-backed`,18)); else if(s.fcfNi>=0.9)e.push(_ev(`FCF ≈ net income (${s.fcfNi.toFixed(2)}×) — sound conversion`,10)); else if(s.fcfNi>=0.7)e.push(_ev(`FCF only ${(s.fcfNi*100).toFixed(0)}% of profit — moderate gap`,-8)); else e.push(_ev(`FCF just ${(s.fcfNi*100).toFixed(0)}% of reported profit — earnings quality concern`,-18)); }
-    if(s.fcfYield!=null && s.fcfYield>6)e.push(_ev(`FCF yield ${s.fcfYield.toFixed(1)}% — substantial cash return`,8));
+    if(s.fcfNi!=null){ if(s.fcfNi>=THRESH.fcfNi.strong)e.push(_ev(`FCF exceeds net income (${s.fcfNi.toFixed(2)}×) — profit fully cash-backed`,18)); else if(s.fcfNi>=THRESH.fcfNi.ok)e.push(_ev(`FCF ≈ net income (${s.fcfNi.toFixed(2)}×) — sound conversion`,10)); else if(s.fcfNi>=THRESH.fcfNi.weak)e.push(_ev(`FCF only ${(s.fcfNi*100).toFixed(0)}% of profit — moderate gap`,-8)); else e.push(_ev(`FCF just ${(s.fcfNi*100).toFixed(0)}% of reported profit — earnings quality concern`,-18)); }
+    if(s.fcfYield!=null && s.fcfYield>THRESH.fcfYield.rich)e.push(_ev(`FCF yield ${s.fcfYield.toFixed(1)}% — substantial cash return`,8));
     if(s.capexIntensity!=null && s.capexIntensity>15)e.push(_ev(`Capex is ${s.capexIntensity.toFixed(0)}% of revenue — capital-hungry model`,-6));
     if(s.revG!=null&&s.revG>8 && s.fcfG!=null&&s.fcfG<0)e.push(_ev(`Revenue up but FCF down — growth consuming cash`,-12));
     P.cashQuality = _mkPillar("Cash quality", 50, e); }
@@ -453,7 +590,8 @@ function pillarScores(s){
     if(s.pricePos!=null){ if(s.pricePos>75)e.push(_ev(`Near 52wk high (${s.pricePos.toFixed(0)}%) — market already recognizes the story`,3)); else if(s.pricePos<25)e.push(_ev(`Near 52wk low (${s.pricePos.toFixed(0)}%) — market pessimism priced in`,3)); }
     if(s.pricePos!=null&&s.pricePos<25 && s.revG!=null&&s.revG>0 && s.fcfNi!=null&&s.fcfNi>=0.9)e.push(_ev(`Price weak but fundamentals sound — price/fundamentals divergence`,10));
     if(s.pricePos!=null&&s.pricePos>85 && s.revDecel!=null&&s.revDecel<0)e.push(_ev(`Price at highs while growth decelerates — momentum outrunning fundamentals`,-10));
-    if(s.revQ!=null&&s.niQ!=null&&s.revQ>2&&s.niQ>s.revQ*1.5)e.push(_ev(`Latest quarter profit outpacing sales — early positive inflection`,8));
+    { const rq=s.revQyoy??s.revQ, nq=s.niQyoy??s.niQ;
+      if(rq!=null&&nq!=null&&rq>2&&nq>rq*1.5)e.push(_ev(`Latest quarter profit outpacing sales ${s.revQyoy!=null?"(YoY, seasonality-free)":"(sequential — seasonality caveat)"} — early positive inflection`,8)); }
     P.momentum = _mkPillar("Price vs Fundamentals", 50, e); }
   return P;
 }
@@ -596,12 +734,20 @@ function veteranMetrics(s){
 
   // 2. INCREMENTAL ECONOMICS — margin on the marginal dollar
   {
-    let inc=null, avg=null;
-    if(rev.length>=4&&ebitda.length>=4&&rev[0]!=null&&rev[3]!=null&&(rev[0]-rev[3])>0){
-      inc=(ebitda[0]-ebitda[3])/(rev[0]-rev[3])*100;
-      avg=ebitda[0]/rev[0]*100;
+    let inc=null, avg=null, tooFlat=false;
+    // B3 fix: require at least 5% cumulative revenue growth before dividing —
+    // a near-zero denominator turns one EBITDA recovery into an absurd
+    // "600% incremental margin" that means nothing.
+    if(rev.length>=4&&ebitda.length>=4&&rev[0]!=null&&rev[3]!=null&&rev[3]>0){
+      const cumGrowth=(rev[0]-rev[3])/rev[3];
+      if(cumGrowth>0.05){
+        inc=(ebitda[0]-ebitda[3])/(rev[0]-rev[3])*100;
+        avg=ebitda[0]/rev[0]*100;
+      } else if(cumGrowth>-0.02) tooFlat=true;
     }
-    let score=50, read="Insufficient data (needs 4 years and growing revenue).";
+    let score=50, read = tooFlat
+      ? "Revenue is essentially flat across the window — incremental margin can't be measured meaningfully (dividing by a near-zero revenue change produces noise, not insight)."
+      : "Insufficient data (needs 4 years and growing revenue).";
     if(inc!=null){
       const gap=inc-avg;
       if(gap>8){score=80; read=`Each new dollar of revenue came in at ${inc.toFixed(0)}% EBITDA margin vs ${avg.toFixed(0)}% average — the marginal dollar is far more profitable than the historical one. Reported margins will keep rising mechanically. This is the future arriving early.`;}
@@ -614,24 +760,37 @@ function veteranMetrics(s){
 
   // 3. REVERSE DCF — the growth rate the price already assumes
   {
-    let implied=null;
+    let implied=null, atCeiling=false;
     const base=fcf[0];
     if(base!=null&&base>0&&s.shares&&s.price){
-      // binary search initial growth g0 (fading to 3% terminal over 10y, 10% discount) matching price
+      // binary search initial growth g0 (fading to 3% terminal over 10y, 10%
+      // discount) matching price — using the SAME corrected fade weights as
+      // dcf(), so implied growth here is directly comparable to the forward
+      // DCF's assumption.
       const target=s.price;
-      let lo=-0.10, hi=0.45;
+      const HI=0.45;
+      let lo=-0.10, hi=HI;
       for(let iter=0;iter<40;iter++){
         const g0=(lo+hi)/2; let pv=0,f=base; const r=0.10,tg=0.03,yrs=10;
-        for(let y=1;y<=yrs;y++){ const gr=g0*(1-(y-1)/yrs)+tg*((y-1)/yrs); f*=(1+gr); pv+=f/Math.pow(1+r,y); }
+        for(let y=1;y<=yrs;y++){ const w=y/yrs, gr=g0*(1-w)+tg*w; f*=(1+gr); pv+=f/Math.pow(1+r,y); }
         pv+=(f*(1+tg))/(r-tg)/Math.pow(1+r,yrs);
         const perShare=(pv-s.debt)/s.shares;
         if(perShare<target) lo=g0; else hi=g0;
       }
       implied=((lo+hi)/2)*100;
+      // B4 fix: if the search terminated at the ceiling, the truth is
+      // "45%+", not "45%" — report the boundary as the finding it is.
+      if(implied>HI*100-0.5) atCeiling=true;
     }
     const hist=s.fcfCagr;
     let score=50, read="Cannot compute (needs positive FCF).";
-    if(implied!=null){
+    let impliedTxt = implied!=null ? `~${implied.toFixed(0)}%` : null;
+    if(implied!=null && atCeiling){
+      score=15;
+      impliedTxt="45%+";
+      read=`The price implies MORE than 45% sustained starting FCF growth — beyond the range this model can even solve for.${hist!=null?` Historically it has delivered ${hist.toFixed(0)}% FCF CAGR.`:""} Expectations this extreme are themselves the finding: the price is a bet on transformation at a scale almost no company has ever sustained for a decade.`;
+    }
+    else if(implied!=null){
       const gapTxt = hist!=null?` Historically it has delivered ${hist.toFixed(0)}% FCF CAGR.`:"";
       if(hist!=null){
         const gap=implied-hist;
@@ -641,7 +800,7 @@ function veteranMetrics(s){
         else {score=20; read=`Price implies ~${implied.toFixed(0)}% sustained growth.${gapTxt} That's far beyond the demonstrated record — the price is a bet on transformation, not continuation. Ask precisely what changed.`;}
       } else { read=`Price implies ~${implied.toFixed(0)}% starting FCF growth, fading to 3% terminal. Judge that against what you believe this business can do.`; }
     }
-    M.impliedGrowth={score, implied, hist, verdict: score>=68?"Beatable expectations":score>=45?"Fairly demanded":"Heroic assumptions", read};
+    M.impliedGrowth={score, implied: atCeiling?null:implied, impliedTxt, hist, verdict: score>=68?"Beatable expectations":score>=45?"Fairly demanded":"Heroic assumptions", read};
   }
 
   // 4. ACCRUALS SMELL TEST — profit vs cash gap (Sloan anomaly)
@@ -720,18 +879,45 @@ function forensicScores(s){
   const ta=v0(bs.totalAssets), tl=v0(bs.totalLiab), ca=v0(bs.currentAssets), cl=v0(bs.currentLiab),
         re=v0(bs.retainedEarnings), ebit=v0(A.operatingIncome), sales=v0(A.revenue), mcap=s.mcap;
 
-  /* ---------- ALTMAN Z-SCORE ---------- */
-  if(ta&&tl&&sales!=null&&ebit!=null&&ca!=null&&cl!=null&&mcap!=null&&ta>0){
-    const wcTa=(ca-cl)/ta, reTa=(re||0)/ta, ebitTa=ebit/ta, mveTl=tl>0?mcap/tl:null, saleTa=sales/ta;
-    if(mveTl!=null){
-      const z = 1.2*wcTa + 1.4*reTa + 3.3*ebitTa + 0.6*mveTl + 1.0*saleTa;
+  /* ---------- ALTMAN Z-SCORE ----------
+     A3 fix, three-way routing:
+     1. FINANCIALS: suppressed entirely. Altman explicitly excluded banks
+        and financial firms — deposits are liabilities and leverage is the
+        business model, so "working capital / total assets" is meaningless
+        and a perfectly healthy bank scores "Distress." Showing that number
+        would directly contradict the Return-Authenticity linkage, which
+        correctly treats financial leverage as the sector norm.
+     2. MANUFACTURERS (Industrials, Basic Materials, Energy, Consumer):
+        original 1968 five-factor Z, the population it was fitted on.
+        Zones: >2.99 safe, 1.81-2.99 grey, <1.81 distress.
+     3. EVERYONE ELSE (tech, healthcare, services, utilities, real estate):
+        Altman's own Z'' revision for non-manufacturers — drops the
+        sales/assets turnover term (which structurally penalises
+        asset-light service firms) and uses book equity instead of market
+        cap. Zones: >2.6 safe, 1.1-2.6 grey, <1.1 distress. */
+  const isFinSector = s.sec==="Financial Services";
+  const MFG_SECTORS = new Set(["Industrials","Basic Materials","Energy","Consumer Cyclical","Consumer Defensive"]);
+  if(isFinSector){
+    out.altman = {score:null, notApplicable:true,
+      read:"Not applicable to banks and financial companies — Altman explicitly excluded them, because deposits count as liabilities and leverage IS the business model, so the formula misreads a healthy bank as distressed. Judge financial-sector balance-sheet risk on ROA, capital adequacy, and asset quality instead (see the Return Authenticity card, which handles this sector correctly)."};
+  } else if(ta&&tl&&ebit!=null&&ca!=null&&cl!=null&&ta>0&&tl>0){
+    const wcTa=(ca-cl)/ta, reTa=(re||0)/ta, ebitTa=ebit/ta;
+    if(MFG_SECTORS.has(s.sec) && sales!=null && mcap!=null){
+      const z = 1.2*wcTa + 1.4*reTa + 3.3*ebitTa + 0.6*(mcap/tl) + 1.0*(sales/ta);
       const zone = z>2.99?"Safe zone":z>1.81?"Grey zone":"Distress zone";
       const color = z>2.99?"#1a8a63":z>1.81?"#b8860b":"#c0392b";
-      out.altman = {score:+z.toFixed(2), zone, color,
-        read:`Z-Score ${z.toFixed(2)} — ${zone}. ${z>2.99?"Statistically well outside the bankruptcy-risk range over a 2-year horizon; asset base, retained earnings, and market cushion all support the balance sheet.":z>1.81?"In the historically ambiguous range — not a red flag on its own, but worth checking alongside the Balance Sheet pillar in the Decision Engine before treating leverage as safe.":"Falls in the range Altman's original research associated with elevated bankruptcy risk within about 2 years. This doesn't mean distress is imminent, but it's a genuine statistical flag worth weighing seriously against everything else you know about this business."}`};
+      out.altman = {score:+z.toFixed(2), zone, color, variant:"Z (manufacturer, 1968)",
+        read:`Z-Score ${z.toFixed(2)} — ${zone} (original manufacturer formula — this stock's sector is what the model was built on). ${z>2.99?"Statistically well outside the bankruptcy-risk range over a 2-year horizon; asset base, retained earnings, and market cushion all support the balance sheet.":z>1.81?"In the historically ambiguous range — not a red flag on its own, but worth checking alongside the Balance Sheet pillar before treating leverage as safe.":"Falls in the range Altman's original research associated with elevated bankruptcy risk within about 2 years. Not a prediction of imminent distress, but a genuine statistical flag worth weighing seriously."}`};
+    } else {
+      const bookEq = ta - tl;
+      const z = 6.56*wcTa + 3.26*reTa + 6.72*ebitTa + 1.05*(bookEq/tl);
+      const zone = z>2.6?"Safe zone":z>1.1?"Grey zone":"Distress zone";
+      const color = z>2.6?"#1a8a63":z>1.1?"#b8860b":"#c0392b";
+      out.altman = {score:+z.toFixed(2), zone, color, variant:"Z'' (non-manufacturer)",
+        read:`Z''-Score ${z.toFixed(2)} — ${zone} (Altman's non-manufacturer revision, which removes the asset-turnover term that structurally penalises asset-light businesses like this one). ${z>2.6?"Comfortably outside the statistical distress range.":z>1.1?"In the ambiguous middle band — read alongside the Balance Sheet pillar rather than in isolation.":"In the band Altman's research associated with elevated distress risk — a genuine statistical flag, not a verdict."}`};
     }
   }
-  if(!out.altman) out.altman={score:null, read:"Missing one or more required fields (total assets, liabilities, working capital, EBIT, or sales) for this specific stock."};
+  if(!out.altman) out.altman={score:null, read:"Missing one or more required fields (total assets, liabilities, working capital, or EBIT) for this specific stock."};
 
   /* ---------- PIOTROSKI F-SCORE ---------- */
   {
@@ -794,6 +980,58 @@ function forensicScores(s){
 }
 
 /* ============================================================
+   SECTOR-RELATIVE QUALITY (the B9 fix, and Stage 3's yardstick)
+   Absolute thresholds punish whole sectors: a superbly-run grocer
+   "fails" a 30% margin test forever; every utility is "capital
+   hungry". The professional fix: score each metric as a PERCENTILE
+   among the stock's own sector peers in the same market, then blend
+   with the same pillar weights the Decision Engine uses.
+   Returns {score, peerCount, parts, note} — or falls back to the
+   absolute composite (clearly labeled) when the peer group is too
+   small for percentiles to mean anything.
+   ============================================================ */
+function sectorRelativeQuality(s, allRows){
+  const peers = allRows.filter(x=>x.sec===s.sec && x.mkt===s.mkt);
+  if(peers.length < 5){
+    return { score: s.healthScore, peerCount: peers.length, parts: null,
+      fallback: true,
+      note:`Only ${peers.length} sector peers loaded — too few for percentile ranking, so this uses the absolute quality composite instead. Treat borderline results gently.` };
+  }
+  // percentile: share of peers this stock beats or ties (0-100).
+  // dir=+1 higher is better; dir=-1 lower is better (e.g. leverage).
+  const pct = (key, getter, dir=1) => {
+    const mine = getter(s);
+    if(mine==null) return null;
+    const vals = peers.map(getter).filter(v=>v!=null);
+    if(vals.length < 5) return null;
+    const beaten = vals.filter(v => dir>0 ? v<=mine : v>=mine).length;
+    return beaten/vals.length*100;
+  };
+  // net-cash companies dominate the leverage ranking by construction
+  const levGet = x => x.debt<0 ? -0.01 : (x.debtToEbitda!=null ? x.debtToEbitda : null);
+
+  const parts = {
+    growth:        { w:0.20, ps:[ pct("revG",x=>x.revG), pct("revCagr",x=>x.revCagr) ] },
+    profitability: { w:0.20, ps:[ pct("emNow",x=>x.emNow), pct("opTrend",x=>x.opMarginTrend) ] },
+    cashQuality:   { w:0.25, ps:[ pct("fcfNi",x=>x.fcfNi), pct("fcfYield",x=>x.fcfYield) ] },
+    balanceSheet:  { w:0.15, ps:[ pct("lev",levGet,-1) ] },
+    returns:       { w:0.20, ps:[ pct("roe",x=>x.roe), pct("roa",x=>x.roa) ] },
+  };
+  let num=0, den=0;
+  const detail={};
+  Object.entries(parts).forEach(([k,p])=>{
+    const avail = p.ps.filter(v=>v!=null);
+    if(!avail.length){ detail[k]=null; return; }
+    const v = avail.reduce((a,b)=>a+b,0)/avail.length;
+    detail[k]=Math.round(v); num += v*p.w; den += p.w;
+  });
+  if(den===0) return { score: s.healthScore, peerCount: peers.length, parts:null, fallback:true,
+    note:"No comparable metrics available for percentile ranking — using the absolute composite." };
+  return { score: Math.round(num/den), peerCount: peers.length, parts: detail, fallback:false,
+    note:`Percentile-ranked against ${peers.length} ${s.sec} peers in the same market — 60 means better than 60% of its own competition, which is a fair test regardless of whether the sector runs thick or thin margins.` };
+}
+
+/* ============================================================
    VALUATION EXTRAS — tangible book value and rough LBO capacity.
    Both computed entirely from data already fetched; no new
    pipeline needed beyond the balance-sheet fields above.
@@ -812,22 +1050,44 @@ function valuationExtras(s){
   }
 
   // Rough LBO capacity: what could a financial buyer pay and still hit a
-  // 20% IRR in 5 years, assuming debt paydown from FCF and exit at the same
-  // EV/EBITDA multiple it entered at. Simplified but directionally honest.
+  // 20% IRR in 5 years? A5 fix — the previous version ignored interest on
+  // the acquisition debt entirely (at ~9% on 4.5x EBITDA of new debt, the
+  // interest bill often exceeded the paydown it was modelling), which badly
+  // overstated the LBO floor. This version:
+  //   - charges interest each year on the outstanding acquisition debt
+  //   - pays down debt only with FCF remaining AFTER interest
+  //   - keeps the two capital structures separate: the buyer pays EV;
+  //     today's shareholders receive EV minus TODAY'S net debt.
+  // Still simplified (flat FCF, flat exit multiple, no fees) — labeled as a
+  // conservative floor estimate, not a prediction.
   const ebitda0 = s.annual?.ebitda?.[0];
   const fcf0 = s.annual?.fcf?.[0];
-  if(ebitda0>0 && fcf0!=null && s.evEbitda){
-    const entryEv = ebitda0 * s.evEbitda;
-    const debtCapacity = ebitda0 * 4.5; // typical LBO leverage ~4-5x EBITDA
-    const equityCheck = Math.max(entryEv - debtCapacity, entryEv*0.25);
-    let debt = debtCapacity;
-    for(let y=0;y<5;y++){ debt = Math.max(0, debt - Math.max(fcf0,0)); }
-    const exitEv = entryEv; // conservative: assume flat multiple, no growth credit
-    const exitEquity = exitEv - debt;
-    const impliedEquityCheckForTargetIRR = exitEquity / Math.pow(1.20,5);
-    const impliedEv = impliedEquityCheckForTargetIRR + debtCapacity;
-    out.lboImpliedPrice = (impliedEv - s.debt) / s.shares;
-    out.lboGapPct = ((out.lboImpliedPrice - s.price)/s.price)*100;
+  const LBO_RATE = 0.09;        // assumed blended cost of acquisition debt
+  const LBO_LEV  = 4.5;         // typical leverage, x EBITDA
+  const TARGET_IRR = 0.20;
+  if(ebitda0>0 && fcf0!=null && fcf0>0 && s.evEbitda){
+    const entryMultiple = s.evEbitda;   // assume exit at the same multiple
+    const debtCapacity = ebitda0 * LBO_LEV;
+    // Simulate 5 years: FCF services interest first, remainder pays principal.
+    let debt = debtCapacity, broken=false;
+    for(let y=0;y<5;y++){
+      const interest = debt * LBO_RATE;
+      const available = fcf0 - interest;
+      if(available <= 0){ broken=true; break; }  // FCF can't even cover interest
+      debt = Math.max(0, debt - available);
+    }
+    if(!broken){
+      const exitEv = ebitda0 * entryMultiple;    // flat EBITDA, flat multiple
+      const exitEquity = exitEv - debt;
+      if(exitEquity > 0){
+        const affordableEquityCheck = exitEquity / Math.pow(1+TARGET_IRR,5);
+        const affordableEv = affordableEquityCheck + debtCapacity;
+        // Sellers (today's shareholders) receive EV minus today's net debt.
+        out.lboImpliedPrice = (affordableEv - s.debt) / s.shares;
+        out.lboGapPct = ((out.lboImpliedPrice - s.price)/s.price)*100;
+      }
+    }
+    if(broken) out.lboNote = "FCF cannot cover interest on typical LBO leverage — a financial buyer could not lever this business at all, so no LBO floor exists.";
   }
   return out;
 }

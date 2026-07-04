@@ -90,6 +90,9 @@ const { JSDOM } = require("jsdom");
       { ticker:"CLEANCO", sector:"Technology", returns:[
         {date:"2025-01-15", forward60d:5, forward90d:6},
         {date:"2024-10-15", forward60d:4, forward90d:5}] },
+    { ticker:"PEER0", sector:"Technology", returns:[
+        {date:"2025-01-20", forward60d:2, forward90d:3},
+        {date:"2024-10-20", forward60d:1, forward90d:2}] },
     ];
     PRICE_HISTORY = {
       CLEANCO:{ticker:"CLEANCO", adv: 40},   // ₹40 cr/day -> cap 200 lakh
