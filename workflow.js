@@ -497,6 +497,17 @@ function renderStage6(survivors){
 }
 
 
+function wfInProgressWarning(f){
+  const n = Object.keys(f.stageResults||{}).length;
+  if(!n) return "";
+  const keys = Object.keys(f.stageResults).map(Number);
+  const lastPass = f.stageResults[Math.max(...keys)]?.pass?.length ?? 0;
+  return '<div style="margin-top:10px;padding:10px 14px;background:var(--warn-bg);border:1px solid var(--line);border-radius:8px;font-size:13.5px;color:var(--dim)">'
+    + '⚠ A funnel is already in progress — '+n+' stage'+(n>1?'s':'')+' run, '+lastPass+' survivor'+(lastPass!==1?'s':'')+' so far. Changing the selection and restarting clears all stage results; re-entry tickets are kept.'
+    + '<div style="margin-top:8px">'+wfBtn("Clear results &amp; restart","data-wfclearstart='1'")+'</div>'
+    + '</div>';
+}
+
 function runFunnelStage(stageId){
   const stage = FUNNEL_STAGES.find(st=>st.id===stageId);
   if(!stage || !stage.conditions) return;
@@ -561,7 +572,10 @@ function renderWorkflow(){
   const rows = computeRows();
 
   /* ----- progress rail ----- */
-  const rail = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 18px">${
+  const rail = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0 18px">
+    <button data-wfgoto0 style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--dim)" title="Go back to Stage 0 and change your market/index/sector selection">↺ New search</button>
+    <div style="width:1px;height:20px;background:var(--line);margin:0 4px"></div>
+    ${
     FUNNEL_STAGES.map(st=>{
       const done = st.id<f.stage, cur = st.id===f.stage;
       const res = f.stageResults[st.id];
@@ -618,10 +632,12 @@ function renderWorkflow(){
             <div style="font-size:13px;color:var(--dim)">${m.sub} · ${m.n} stocks loaded</div>
           </div>`).join("")}</div></div>
       ${indexPicker}${sectorPicker}
-      ${f.market?`<div style="margin-top:20px;display:flex;align-items:center;gap:14px">
+      ${f.market?`<div style="margin-top:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         ${wfBtn(`Begin the funnel with ${slice.length} stocks →`,`data-wfbegin="1"`,true)}
         <span class="hint" style="margin:0">Your hunting ground: <b>${f.market==="IN"?(IN_INDEX_LABELS[f.index]||"All Nifty names"):"S&P 500"}</b>${f.sector!=="ALL"?` · <b>${f.sector}</b>`:" · all sectors"}</span>
-      </div>`:`<p class="hint">Select a market to continue.</p>`}
+      </div>
+      ${wfInProgressWarning(f)}
+      `:`<p class="hint">Select a market to continue.</p>`}
     </div>
     ${renderWfTickets()}`;
   }
@@ -734,6 +750,16 @@ function wireWorkflow(root){
   on("[data-wfnext]",   ()=>{ F.stage=Math.min(F.stage+1, FUNNEL_STAGES.length-1); saveFunnel(); render(); setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50); });
   on("[data-wfback]",   ()=>{ F.stage=Math.max(F.stage-1, 0); saveFunnel(); render(); window.scrollTo(0,0); });
   on("[data-wfreset]",  ()=>{ resetFunnel(true); render(); window.scrollTo(0,0); });
+  on("[data-wfgoto0]",  ()=>{
+    // Go back to Stage 0 to change selection — keep results and tickets
+    // so switching market mid-funnel is possible without losing everything
+    F.stage=0; saveFunnel(); render(); window.scrollTo(0,0);
+  });
+  on("[data-wfclearstart]", ()=>{
+    // User confirmed they want to change selection and restart — clear results
+    // but keep re-entry tickets from prior runs (they may still be useful)
+    F.stageResults={}; F.readAck={}; F.stage=0; saveFunnel(); render(); window.scrollTo(0,0);
+  });
   on("[data-wf6horizon]", el=>{ F.horizon=el.dataset.wf6horizon; saveFunnel(); render(); });
   const pos=root.querySelector("#wf6pos"); if(pos) pos.onchange=e=>{ F.posSize=Math.max(0,+e.target.value||0); saveFunnel(); render(); };
   const tol=root.querySelector("#wf6tol"); if(tol) tol.onchange=e=>{ F.lossTol=Math.min(5,Math.max(0.5,+e.target.value||1.5)); saveFunnel(); render(); };
