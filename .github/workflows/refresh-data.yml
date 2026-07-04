@@ -1,0 +1,69 @@
+name: Refresh market data
+
+on:
+  schedule:
+    - cron: "0 20 * * *"    # daily at 20:00 UTC = 4:00 AM Singapore time — prices + fundamentals
+    - cron: "0 20 * * 6"    # weekly Sat 20:00 UTC = Sun 4:00 AM Singapore time — + EDGAR + reactions
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install yfinance requests beautifulsoup4
+      - name: Run price + fundamentals fetch
+        run: python fetch_data.py
+      - name: Run macro environment fetch (daily, fast)
+        run: python fetch_macro.py
+      - name: Run analyst estimates fetch (daily, fast)
+        run: |
+          python -c "import fetch_estimates; fetch_estimates.main(use_test_list=False)" || echo "Estimates fetch failed, continuing"
+      - name: Run US fundamentals verification (daily, cross-checks SEC filings)
+        run: |
+          python -c "import fetch_verify_us; fetch_verify_us.main(use_test_list=False)" || echo "US verification failed, continuing"
+      - name: Run India price + range verification (daily, cross-checks NSE)
+        run: |
+          python -c "import fetch_verify_in; fetch_verify_in.main(use_test_list=False)" || echo "NSE verification failed (endpoint may have changed), continuing"
+      - name: Run price history fetch (weekly, powers the price chart)
+        run: |
+          DAY=$(date -u +%u)
+          if [ "$DAY" = "6" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Running price history fetch..."
+            python -c "import fetch_price_history; fetch_price_history.main(use_test_list=False)" || echo "Price history fetch failed, continuing"
+          else
+            echo "Skipping price history fetch (daily run) - runs Saturdays UTC = Sundays 4am Singapore time."
+          fi
+      - name: Run EDGAR earnings fetch (full SP500, weekly)
+        run: |
+          DAY=$(date -u +%u)
+          if [ "$DAY" = "6" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Running EDGAR fetch..."
+            python -c "import fetch_edgar; fetch_edgar.main(use_test_list=False)"
+          else
+            echo "Skipping EDGAR fetch (daily run) - runs Saturdays UTC = Sundays 4am Singapore time."
+          fi
+      - name: Run earnings price-reaction fetch (weekly, depends on EDGAR data)
+        run: |
+          DAY=$(date -u +%u)
+          if [ "$DAY" = "6" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Running reactions fetch..."
+            python fetch_reactions.py || echo "Skipped - edgar_transcripts.json not ready yet"
+          else
+            echo "Skipping reactions fetch (daily run) - runs Saturdays UTC = Sundays 4am Singapore time."
+          fi
+      - name: Commit updated data files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json macro.json edgar_transcripts.json reactions.json estimates.json verify_us.json verify_in.json price_history.json 2>/dev/null || git add data.json macro.json
+          git diff --cached --quiet || git commit -m "Refresh market data $(date -u +%Y-%m-%d)"
+          git push
+
