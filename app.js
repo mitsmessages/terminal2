@@ -36,8 +36,6 @@ const State = {
   veteranOpen: null,
   veteranView: "sector",
   veteranMkt: "ALL",
-  funnel: null,   // lazy-loaded by renderWorkflow() from localStorage
-  portfolio: null, // lazy-loaded by renderPortfolio() from localStorage
 };
 
 function saveWatchlist(){ localStorage.setItem("terminal_watchlist", JSON.stringify(State.watchlist)); }
@@ -192,8 +190,6 @@ function renderHeader(){
       <span class="brand" data-home style="cursor:pointer"><span class="dot">▮▮</span> TERMINAL</span>
       <div class="tabs">
         <button data-tab="stocks" class="${State.tab==='stocks'?'on':''}">Stocks</button>
-        <button data-tab="workflow" class="${State.tab==='workflow'?'on':''}">Workflow</button>
-        <button data-tab="portfolio" class="${State.tab==='portfolio'?'on':''}">Portfolio</button>
         <button data-tab="sectors" class="${State.tab==='sectors'?'on':''}">Sectors &amp; cycles</button>
         <button data-tab="compare" class="${State.tab==='compare'?'on':''}">Compare${State.compare.length?` (${State.compare.length})`:''}</button>
         <button data-tab="playbook" class="${State.tab==='playbook'?'on':''}">Playbook</button>
@@ -447,7 +443,7 @@ function renderTearsheet(t){
     </div>
     <div class="panel">
       <div class="panelhead"><span class="panelt">Efficiency &amp; risk</span></div>
-      ${renderKV([["FCF yield",s.fcfYield?s.fcfYield.toFixed(1)+"%":"—"],["Earnings yield",s.earnYield?s.earnYield.toFixed(1)+"%":"—"],["PEG ratio",s.peg?s.peg.toFixed(2)+(s.pegSource==="ni"?" (NI est.)":""):"—"],["Rule of 40",s.ruleOf40!=null?s.ruleOf40.toFixed(0)+(s.ruleOf40>=40?" ✓ passes":" ✗ fails"):"—"],["Net debt/EBITDA",s.debtToEbitda?s.debtToEbitda.toFixed(1)+"×":(s.debt<0?"net cash":"—")],["Capex intensity",s.capexIntensity?s.capexIntensity.toFixed(1)+"%":"—"],["Rev growth Δ",s.revDecel!=null?sign(s.revDecel)+" pts":s.revRecovery?"↑ recovering":"—"]])}
+      ${renderKV([["FCF yield",s.fcfYield?s.fcfYield.toFixed(1)+"%":"—"],["Earnings yield",s.earnYield?s.earnYield.toFixed(1)+"%":"—"],["PEG ratio",s.peg?s.peg.toFixed(2):"—"],["Net debt/EBITDA",s.debtToEbitda?s.debtToEbitda.toFixed(1)+"×":(s.debt<0?"net cash":"—")],["Capex intensity",s.capexIntensity?s.capexIntensity.toFixed(1)+"%":"—"],["Rev growth Δ",s.revDecel!=null?sign(s.revDecel)+" pts":"—"]])}
     </div>
   </div>
 
@@ -1769,7 +1765,7 @@ function render(){
     ${renderHeader()}
     <div class="wrap">
       ${renderWatchDrawer()}
-      ${State.tab==="portfolio" ? renderPortfolio() : State.tab==="workflow" ? renderWorkflow() : State.tab==="sectors" ? renderSectors() : State.tab==="compare" ? renderCompare() : State.tab==="playbook" ? renderPlaybook() : State.tab==="learn" ? renderLearn() : State.tab==="veteran" ? renderVeteran() : (State.sel ? renderTearsheet(State.sel) : renderScreener())}
+      ${State.tab==="sectors" ? renderSectors() : State.tab==="compare" ? renderCompare() : State.tab==="playbook" ? renderPlaybook() : State.tab==="learn" ? renderLearn() : State.tab==="veteran" ? renderVeteran() : (State.sel ? renderTearsheet(State.sel) : renderScreener())}
     </div>
   `;
   wireEvents();
@@ -1779,8 +1775,6 @@ function wireEvents(){
   const root = document.getElementById("root");
 
   root.querySelectorAll("[data-tab]").forEach(el=>el.onclick=()=>{State.tab=el.dataset.tab;State.sel=null;render();});
-  if (typeof wireWorkflow === "function" && State.tab === "workflow") wireWorkflow(root);
-  if (typeof wirePortfolio === "function" && State.tab === "portfolio") wirePortfolio(root);
   const homeLink=root.querySelector("[data-home]");
   if(homeLink) homeLink.onclick=()=>{State.tab="stocks";State.sel=null;State.preset="all";State.mkt="ALL";State.capTier="ALL";State.q="";render();window.scrollTo(0,0);};
   const watchToggle=document.getElementById("watchToggle");

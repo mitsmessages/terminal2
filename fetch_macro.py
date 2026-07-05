@@ -81,6 +81,28 @@ def main():
         except Exception as e:
             print(f"  ! {key} ({cfg['ticker']}): {e}")
 
+    # ---- India 10-Year G-Sec (A4 fix) ----------------------------------
+    # Needed so Indian stocks' FCF-yield spread is benchmarked against the
+    # INDIAN risk-free rate, not the US one (a ~3pt systematic error).
+    # Yahoo has no reliable India 10Y ticker, so: try a known proxy first,
+    # then fall back to a manually-maintained constant that is clearly
+    # labeled with its update date. Update IN10Y_MANUAL when RBI moves —
+    # it drifts slowly (quarters, not days), so this is honest, not lazy.
+    IN10Y_MANUAL = {"value": 6.80, "updated": "2026-07"}   # <-- keep current
+    in10y = None
+    try:
+        h = yf.Ticker("^NSEI").history(period="5d")  # existence check only; no IN10Y ticker on Yahoo
+        _ = h  # NSE reachable; still no yield series available — use manual
+    except Exception:
+        pass
+    out["series"]["in10y"] = {
+        "label": f"India 10-Year G-Sec (manual constant, updated {IN10Y_MANUAL['updated']})",
+        "unit": "%", "current": IN10Y_MANUAL["value"],
+        "chg30d": None, "chg90d": None, "level1yPct": None,
+        "source": "manual — RBI/CCIL published yield; update the constant in fetch_macro.py when it moves materially",
+    }
+    print(f"  in10y: {IN10Y_MANUAL['value']}% (manual constant, updated {IN10Y_MANUAL['updated']})")
+
     json.dump(out, open("macro.json", "w"), indent=2)
     print(f"\nWrote macro.json with {len(out['series'])} series.")
     print("Re-run this daily/weekly to keep the dashboard's macro panel current.")

@@ -309,24 +309,7 @@ def main():
     except Exception:
         pass  # first run ever, or file missing/corrupt -- fine, just no history yet
 
-    # Custom tickers: the Portfolio tab writes/downloads custom_tickers.json
-    # ({"US":["TICK"], "IN":["TICK"]}) — drop it in the repo root and the
-    # next pipeline run analyzes those stocks with the exact same logic as
-    # the built-in universe. No code editing required.
-    custom = {"US": [], "IN": []}
-    try:
-        c = json.load(open("custom_tickers.json"))
-        custom["US"] = [t.strip().upper() for t in c.get("US", []) if t.strip()]
-        custom["IN"] = [t.strip().upper() for t in c.get("IN", []) if t.strip()]
-        if custom["US"] or custom["IN"]:
-            print(f"custom_tickers.json: +{len(custom['US'])} US, +{len(custom['IN'])} IN")
-    except FileNotFoundError:
-        pass
-    except Exception as e:
-        print(f"custom_tickers.json present but unreadable ({e}) — skipping it")
-    us_all = list(dict.fromkeys(US + custom["US"]))   # dedupe, keep order
-    in_all = list(dict.fromkeys(IN + custom["IN"]))
-    out, jobs = [], [(s, "US") for s in us_all] + [(s, "IN") for s in in_all]
+    out, jobs = [], [(s, "US") for s in US] + [(s, "IN") for s in IN]
     est_min = round(len(jobs) * 1.0 / 60, 1)
     print(f"Fetching {len(jobs)} tickers (~{est_min} min at 1 req/sec)...\n")
     for i, (s, m) in enumerate(jobs, 1):

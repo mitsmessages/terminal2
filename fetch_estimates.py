@@ -128,7 +128,7 @@ def pull_estimates(ticker, mkt):
     return out if has_data else None
 
 
-def main(use_test_list=True):
+def main(use_test_list=False):
     tickers = [(t, "US") for t in TEST_TICKERS] if use_test_list else load_universe()
     print(f"\nAnalyst estimates fetch — {len(tickers)} tickers")
     print("Source: Yahoo Finance consensus estimates (free, via yfinance)")
@@ -161,4 +161,4 @@ def main(use_test_list=True):
 
 
 if __name__ == "__main__":
-    main(use_test_list=True)
+    main(use_test_list=False)  # full universe by default — test list starved the DCF growth merge of coverage
