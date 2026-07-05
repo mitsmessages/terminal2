@@ -108,7 +108,11 @@ const { JSDOM } = require("jsdom");
 
   console.log("\n[Optimizer rules]");
   const sugg = () => w.eval(`JSON.stringify(pfOptimize(pfCompute()).map(s=>s.title))`);
-  t("R1: ACCRUALY flagged for honesty-gate failure", w.eval(`pfOptimize(pfCompute()).some(s=>s.sev===1&&/ACCRUALY/.test(s.title))`), sugg());
+  t("R1: ACCRUALY flagged with gate count in title (6-gate rule)", w.eval(`pfOptimize(pfCompute()).some(s=>/ACCRUALY: \\d\\/6 gates passed/.test(s.title))`), sugg());
+  t("6-gate rule: severity follows gates passed (<=2 red, 3-4 orange, >=5 blue)", w.eval(`pfOptimize(pfCompute()).filter(s=>/gates passed/.test(s.title)).every(s=>{const p=+s.title.match(/(\\d)\\/6/)[1]; return s.sev===(p<=2?1:p<=4?2:3);})`), sugg());
+  t("pfGates: gate colors follow 5-6 green / 3-4 orange / 0-2 red", w.eval(`(function(){const pc=pfCompute(); return pc.items.every(x=>{const g=pfGates(x); return g.band===(g.passed>=5?"green":g.passed>=3?"orange":"red");});})()`));
+  t("6-gate scorecard rendered in Optimization card", w.eval(`renderPortfolio().includes("6-gate scorecard") && /\\d\\/6 gates/.test(renderPortfolio())`));
+  t("Concentration rows expandable (data-pfconc present)", w.eval(`renderPortfolio().includes("data-pfconc")`));
   t("R2: CYCLIX oversized vs worst-year floor", w.eval(`pfOptimize(pfCompute()).some(s=>/CYCLIX is .*worst-year floor/.test(s.title))`), sugg());
   t("R3: Technology concentration flagged (>40%)", w.eval(`pfOptimize(pfCompute()).some(s=>/concentrated in Technology/.test(s.title))`), sugg());
   t("R5: LAGX laggard with STRONGA/STRONGB research pointers", w.eval(`pfOptimize(pfCompute()).some(s=>/LAGX/.test(s.title)&&/STRONG/.test(s.detail))`), sugg());
