@@ -1,9 +1,14 @@
 {
   "fetch_custom": {
-    "status": "ok",
-    "fetched": 1,
-    "failed": 0,
-    "failedTickers": [],
-    "updatedAt": "2026-07-05T06:35:34.087392+00:00"
+    "status": "partial",
+    "fetched": 80,
+    "failed": 4,
+    "failedTickers": [
+      "ADANIENPP1",
+      "AREM",
+      "BHARATAGRI",
+      "M-M"
+    ],
+    "updatedAt": "2026-07-05T08:11:05.632961+00:00"
   }
 }
