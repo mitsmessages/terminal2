@@ -653,6 +653,158 @@ function renderEarningsSentiment(s){
   </div>`;
 }
 
+/* ============================================================
+   LIVE AI RESEARCH CHAT — per-stock, powered by Google Gemini.
+   The API key is entered once in the panel below and stored ONLY
+   in this browser's localStorage ("terminal_gemini_key") — it is
+   never sent anywhere except directly to Google's API endpoint.
+   Get a free key at https://aistudio.google.com/apikey
+   ============================================================ */
+function getGeminiKey(){ try{ return localStorage.getItem("terminal_gemini_key")||""; }catch(e){ return ""; } }
+function setGeminiKey(k){ try{ if(k) localStorage.setItem("terminal_gemini_key",k); else localStorage.removeItem("terminal_gemini_key"); }catch(e){} }
+
+function aiFmt(text){
+  // minimal safe formatting: escape HTML, then **bold** and line breaks
+  const esc = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return esc.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/^[*-] /gm,"• ").replace(/\n/g,"<br>");
+}
+
+function renderAIChat(s){
+  if(State.aiChat.t!==s.t) State.aiChat={t:s.t, msgs:[], busy:false, error:null};
+  const key = getGeminiKey();
+  const C = State.aiChat;
+  const chips = ["Latest news and quarterly results","Any recent red flags, regulator or auditor issues?","What are analysts saying about it right now?","Explain this company's business model simply"];
+  const keyUI = (!key || State.aiKeyEdit) ? `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0">
+      <input id="aiKeyInput" type="password" placeholder="Paste your Google AI (Gemini) API key…" value="${key}"
+        style="flex:1;min-width:220px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);font-size:13px"/>
+      <button class="askbtn" data-aikeysave>Save key</button>
+    </div>
+    <p style="font-size:12px;color:var(--dim);margin:0 0 8px;line-height:1.5">Free key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">aistudio.google.com/apikey</a>. Stored only in this browser's localStorage — sent nowhere except Google's API. With Search grounding, answers include live web information.</p>`
+  : `<p style="font-size:12px;color:var(--good);margin:6px 0 8px">✓ Gemini key saved in this browser <span data-aikeyedit style="color:var(--accent);cursor:pointer;margin-left:8px">change / remove</span></p>`;
+  return `
+  <div class="askbox" style="background:linear-gradient(135deg,#e8f4f0,#ddeee8);border-color:#bcd9cf">
+    <div class="askhead"><div>
+      <div class="asktitle">⚡ Live research — ask anything about ${s.t}</div>
+      <div class="asksub">Answers come live from Google's Gemini API (with Search grounding when available) combined with this terminal's own numbers for ${s.t}. Nothing here is investment advice.</div>
+    </div></div>
+    ${keyUI}
+    ${key?`
+    ${C.msgs.length?`<div id="aiChatMsgs" style="max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:10px 12px;margin-bottom:8px">
+      ${C.msgs.map(m=>`<div style="margin:6px 0;font-size:13.5px;line-height:1.6;${m.role==="user"?"font-weight:600":""}">
+        <span style="color:${m.role==="user"?"var(--accent)":"#6d3dd3"};font-weight:700">${m.role==="user"?"You":"AI"}:</span> ${aiFmt(m.text)}</div>`).join("")}
+      ${C.busy?`<div style="color:var(--dim);font-size:13px">… fetching live answer</div>`:""}
+    </div>`:""}
+    ${C.error?`<p style="font-size:12.5px;color:var(--warn);margin:4px 0">⚠ ${C.error}</p>`:""}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      ${chips.map(q=>`<button class="preset" data-aichip="${q.replace(/"/g,"&quot;")}" style="font-size:12px;padding:4px 10px" ${C.busy?"disabled":""}>${q}</button>`).join("")}
+    </div>
+    <div style="display:flex;gap:8px">
+      <input id="aiChatInput" placeholder="e.g. did ${s.t} announce anything this month?" ${C.busy?"disabled":""}
+        style="flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);font-size:13.5px"/>
+      <button class="askbtn" data-aisend ${C.busy?"disabled":""}>${C.busy?"…":"Send →"}</button>
+    </div>`:""}
+  </div>`;
+}
+
+/* Model discovery: Google retires model IDs (gemini-2.0-flash was retired
+   2026-03 and now returns "limit: 0" quota errors), so never hard-code one.
+   Ask the API which models THIS key can use, prefer the evergreen "-latest"
+   flash aliases, and remember whichever one worked. */
+let GEMINI_MODELS_CACHE = null;
+async function geminiCandidateModels(key){
+  const saved = (()=>{ try{ return localStorage.getItem("terminal_gemini_model"); }catch(e){ return null; } })();
+  if(!GEMINI_MODELS_CACHE){
+    let names = [];
+    try{
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}&pageSize=200`);
+      if(r.ok){ const j = await r.json();
+        names = (j.models||[])
+          .filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent"))
+          .map(m=>(m.name||"").replace(/^models\//,""))
+          .filter(n=>/flash/i.test(n) && !/(image|tts|audio|live|embed|thinking)/i.test(n));
+      }
+    }catch(e){}
+    const pref = ["gemini-flash-latest","gemini-flash-lite-latest"];
+    GEMINI_MODELS_CACHE = [...new Set([
+      ...pref.filter(p=>names.includes(p)),
+      ...names.sort().reverse(),                      // newest version numbers first
+      "gemini-flash-latest","gemini-2.5-flash","gemini-2.5-flash-lite",  // fallback guesses if listing failed
+    ])];
+  }
+  return [...new Set([...(saved?[saved]:[]), ...GEMINI_MODELS_CACHE])].slice(0,6);
+}
+
+async function sendAIMessage(t, text){
+  const key=getGeminiKey();
+  if(!key || !text || !text.trim() || State.aiChat.busy) return;
+  if(State.aiChat.t!==t) State.aiChat={t, msgs:[], busy:false, error:null};
+  State.aiChat.msgs.push({role:"user", text:text.trim()});
+  State.aiChat.busy=true; State.aiChat.error=null; render();
+  const s = computeRows().find(r=>r.t===t);
+  const snap = s?{price:s.price, mktCap:s.mcap, pe:s.pe, revYoY:s.revG, fcfYoY:s.fcfG, roe:s.roe, dcfGapPct:s.mos, sector:s.sec}:{};
+  const sys = `You are an equity research assistant inside a stock terminal. The user is viewing ${t}${s?` (${s.n})`:""}, listed in ${s?.mkt==="IN"?"India (NSE)":"the US"}. Terminal snapshot (may lag live data): ${JSON.stringify(snap)}. Use web search for anything recent — news, results, corporate actions, analyst views — and state dates for time-sensitive facts. Be concise and factual. End nothing with disclaimers; the UI already shows one.`;
+  const contents = State.aiChat.msgs.map(m=>({role:m.role==="user"?"user":"model", parts:[{text:m.text}]}));
+  try{
+    const models = await geminiCandidateModels(key);
+    let lastErr = "No usable Gemini model found for this key — open aistudio.google.com to check which models your key can access.";
+    let done = false;
+    // Remember whether Search grounding works for this key — retrying it on
+    // every message wastes free-tier quota (~10 requests/min).
+    const toolsPref = (()=>{ try{ return localStorage.getItem("terminal_gemini_tools")!=="0"; }catch(e){ return true; } })();
+    outer:
+    for(const model of models){
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+      for(const withTools of (toolsPref ? [true,false] : [false])){
+        const body = {system_instruction:{parts:[{text:sys}]}, contents};
+        if(withTools) body.tools = [{google_search:{}}];
+        let r;
+        try{ r = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); }
+        catch(err){ lastErr = err.message; continue outer; }
+        if(r.ok){
+          const j = await r.json();
+          const out = (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("").trim();
+          State.aiChat.msgs.push({role:"model", text: out||"(empty response — try rephrasing)"});
+          try{ localStorage.setItem("terminal_gemini_model", model);
+               localStorage.setItem("terminal_gemini_tools", withTools?"1":"0"); }catch(e){}
+          done = true; break outer;
+        }
+        const eBody = await r.json().catch(()=>({}));
+        const msg = eBody?.error?.message || `HTTP ${r.status}`;
+        lastErr = `${model}: ${msg}`;
+        // model retired or has zero quota on this key's tier -> try the next model
+        if(r.status===404 || (r.status===429 && /limit:\s*0/.test(msg))){
+          try{ localStorage.removeItem("terminal_gemini_model"); }catch(e){}
+          continue outer;
+        }
+        // rate-limited WITH the search tool -> the grounding quota may be the
+        // bottleneck; drop the tool and try once more before giving up
+        if(r.status===429 && withTools){
+          try{ localStorage.setItem("terminal_gemini_tools","0"); }catch(e){}
+          continue;
+        }
+        // genuine rate limit -> tell the user how long to wait, don't burn more quota
+        if(r.status===429){
+          const m = msg.match(/retry in ([\d.]+)s/i);
+          throw new Error(`Rate limit reached on ${model} — wait ~${m?Math.ceil(+m[1]):60}s, then resend (your question is kept in the box below). Free-tier keys allow roughly 10 requests/minute. Live-search grounding has been switched off to save quota; re-save your key to turn it back on.`);
+        }
+        // search-grounding tool rejected -> retry the same model without it
+        if(withTools && (r.status===400 || /tool|search/i.test(msg))) continue;
+        throw new Error(msg);
+      }
+    }
+    if(!done) throw new Error(lastErr);
+  }catch(e){
+    State.aiChat.error = /API key/i.test(e.message) ? e.message+" — re-check the key (change/remove link above)." : e.message;
+    State.aiChat.msgs.pop();   // put the question back in the input on failure
+    State.aiChat.failedText = text;
+  }
+  State.aiChat.busy=false; render();
+  const box=document.getElementById("aiChatMsgs"); if(box) box.scrollTop=box.scrollHeight;
+  const inp=document.getElementById("aiChatInput");
+  if(inp && State.aiChat.failedText){ inp.value=State.aiChat.failedText; State.aiChat.failedText=null; }
+}
+
 async function handleEarnings(ticker){
   const rows = computeRows();
   const s = rows.find(r=>r.t===ticker);
@@ -2148,6 +2300,20 @@ function wireEvents(){
     const detail=root.querySelector(`[data-flagdetail="${el.dataset.flagtoggle}"]`);
     if(detail) detail.style.display = detail.style.display==="none" ? "flex" : "none";
   });
+
+  /* live AI chat (Gemini) */
+  const aiKeySave=root.querySelector("[data-aikeysave]");
+  if(aiKeySave) aiKeySave.onclick=()=>{ const v=(document.getElementById("aiKeyInput")?.value||"").trim(); setGeminiKey(v);
+    try{ localStorage.removeItem("terminal_gemini_model"); localStorage.removeItem("terminal_gemini_tools"); }catch(e){}
+    GEMINI_MODELS_CACHE=null; State.aiKeyEdit=false; render(); };
+  const aiKeyEdit=root.querySelector("[data-aikeyedit]");
+  if(aiKeyEdit) aiKeyEdit.onclick=()=>{ State.aiKeyEdit=true; render(); };
+  const aiSend=root.querySelector("[data-aisend]");
+  const aiFire=()=>{ const inp=document.getElementById("aiChatInput"); if(inp && inp.value.trim() && State.sel) sendAIMessage(State.sel, inp.value); };
+  if(aiSend) aiSend.onclick=aiFire;
+  const aiInput=document.getElementById("aiChatInput");
+  if(aiInput) aiInput.onkeydown=e=>{ if(e.key==="Enter") aiFire(); };
+  root.querySelectorAll("[data-aichip]").forEach(el=>el.onclick=()=>{ if(State.sel) sendAIMessage(State.sel, el.dataset.aichip); });
 
   root.querySelectorAll("[data-ask]").forEach(el=>el.onclick=()=>handleAsk(el.dataset.tk, el.dataset.ask));
   root.querySelectorAll("[data-earnings]").forEach(el=>el.onclick=()=>handleEarnings(el.dataset.earnings));
