@@ -2,48 +2,38 @@ name: Refresh market data
 
 on:
   schedule:
-    # 5:00 AM SGT = 21:00 UTC (previous day). SGT is UTC+8.
-    - cron: '0 21 * * *'
-  workflow_dispatch:   # "Run workflow" button in the Actions tab for immediate manual runs
+    - cron: "0 20 * * *"   # daily 20:00 UTC = 04:00 SGT (UTC+8)
+  workflow_dispatch: {}     # "Run workflow" button for immediate manual runs
 
 permissions:
-  contents: write      # needed to commit the JSON files back to the repo
+  contents: write
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 360   # 6-hour cap; the full universe takes 2-3 hrs
+    timeout-minutes: 360    # 6-hour cap; full universe takes 2-3 hrs
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install yfinance requests openpyxl
+        run: pip install yfinance requests beautifulsoup4 openpyxl
 
-      # ── git identity for the commits this workflow makes ──────────────────
       - name: Configure git
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # ═══════════════════════════════════════════════════════════════════════
-      # CRITICAL LESSON (see PROJECT_CONTEXT.md): commit after EVERY step.
-      # A workflow that fetches 8 sources and commits only at the end loses
-      # EVERYTHING if it times out at hour 5. Partial progress is good data.
-      # ═══════════════════════════════════════════════════════════════════════
+      # CRITICAL: commit after EVERY step.
+      # A workflow that commits only at the end loses EVERYTHING on timeout.
 
-      # ── 1. Core fundamentals (largest step, ~2 hrs for full universe) ─────
+      # 1. Core fundamentals (~2 hrs for full universe)
       - name: Fetch core fundamentals
         run: python fetch_data.py
-        continue-on-error: true   # timeout or Yahoo blip → partial data.json is still useful
+        continue-on-error: true
 
       - name: Commit fundamentals
         run: |
@@ -51,7 +41,7 @@ jobs:
           git diff --cached --quiet || git commit -m "data: fundamentals $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 
-      # ── 2. Macro (rates, crude, VIX, USD/INR, India 10Y) ─────────────────
+      # 2. Macro — fast ~10s
       - name: Fetch macro
         run: python fetch_macro.py
         continue-on-error: true
@@ -62,9 +52,10 @@ jobs:
           git diff --cached --quiet || git commit -m "data: macro $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 
-      # ── 3. Analyst estimates + revision momentum ──────────────────────────
+      # 3. Analyst estimates — feeds DCF growth; full universe
       - name: Fetch estimates
-        run: python fetch_estimates.py
+        run: |
+          python -c "import fetch_estimates; fetch_estimates.main(use_test_list=False)" || echo "Estimates fetch failed, continuing"
         continue-on-error: true
 
       - name: Commit estimates
@@ -73,31 +64,10 @@ jobs:
           git diff --cached --quiet || git commit -m "data: estimates $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 
-      # ── 4. Price history + average daily traded value (liquidity) ─────────
-      - name: Fetch price history
-        run: python fetch_price_history.py
-        continue-on-error: true
-
-      - name: Commit price history
-        run: |
-          git add price_history.json 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "data: price_history $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push
-
-      # ── 5. Earnings reactions ─────────────────────────────────────────────
-      - name: Fetch earnings reactions
-        run: python fetch_reactions.py
-        continue-on-error: true
-
-      - name: Commit reactions
-        run: |
-          git add reactions.json 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "data: reactions $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push
-
-      # ── 6. US primary-source verification (SEC XBRL) ─────────────────────
+      # 4. US verification (SEC XBRL)
       - name: Fetch US verification
-        run: python fetch_verify_us.py
+        run: |
+          python -c "import fetch_verify_us; fetch_verify_us.main(use_test_list=False)" || echo "US verification failed, continuing"
         continue-on-error: true
 
       - name: Commit US verification
@@ -106,9 +76,10 @@ jobs:
           git diff --cached --quiet || git commit -m "data: verify_us $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 
-      # ── 7. India verification (NSE adjusted data) ─────────────────────────
+      # 5. India verification (NSE)
       - name: Fetch India verification
-        run: python fetch_verify_in.py
+        run: |
+          python -c "import fetch_verify_in; fetch_verify_in.main(use_test_list=False)" || echo "NSE verification failed, continuing"
         continue-on-error: true
 
       - name: Commit India verification
@@ -117,29 +88,67 @@ jobs:
           git diff --cached --quiet || git commit -m "data: verify_in $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 
-      # ── 8. SEC EDGAR earnings press releases ──────────────────────────────
-      - name: Fetch EDGAR filings
-        run: python fetch_edgar.py
+      # 6. Price history + ADV liquidity data (weekly Saturdays)
+      - name: Fetch price history
+        run: |
+          DAY=$(date -u +%u)
+          if [ "$DAY" = "6" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            python -c "import fetch_price_history; fetch_price_history.main(use_test_list=False)" || echo "Price history fetch failed, continuing"
+          else
+            echo "Skipping price history (runs Saturdays UTC = Sundays 4am SGT)"
+          fi
+        continue-on-error: true
+
+      - name: Commit price history
+        run: |
+          git add price_history.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "data: price_history $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
+
+      # 7. EDGAR earnings press releases (weekly Saturdays)
+      - name: Fetch EDGAR
+        run: |
+          DAY=$(date -u +%u)
+          if [ "$DAY" = "6" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            python -c "import fetch_edgar; fetch_edgar.main(use_test_list=False)" || echo "EDGAR fetch failed, continuing"
+          else
+            echo "Skipping EDGAR (runs Saturdays UTC = Sundays 4am SGT)"
+          fi
         continue-on-error: true
 
       - name: Commit EDGAR
         run: |
-          git add edgar.json 2>/dev/null || true
+          git add edgar_transcripts.json 2>/dev/null || true
           git diff --cached --quiet || git commit -m "data: edgar $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 
-      # ── 9. NSE index constituents + industry labels (NEW) ─────────────────
-      # Runs weekly (Mon only) — these change infrequently and NSE's servers
-      # don't need a daily hit. The cron still fires daily but this step
-      # skips on non-Monday runs.
-      - name: Fetch NSE classification (weekly — Mondays only)
-        if: github.event_name == 'workflow_dispatch' || contains(fromJson('["Monday"]'), steps.dayname.outputs.day)
-        run: python fetch_nse_classification.py
+      # 8. Earnings reactions (weekly Saturdays, depends on EDGAR)
+      - name: Fetch earnings reactions
+        run: |
+          DAY=$(date -u +%u)
+          if [ "$DAY" = "6" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            python fetch_reactions.py || echo "Skipped - edgar_transcripts.json not ready"
+          else
+            echo "Skipping reactions (runs Saturdays UTC = Sundays 4am SGT)"
+          fi
         continue-on-error: true
 
-      - name: Get day name
-        id: dayname
-        run: echo "day=$(date -u '+%A')" >> $GITHUB_OUTPUT
+      - name: Commit reactions
+        run: |
+          git add reactions.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "data: reactions $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
+
+      # 9. NSE index constituents (NEW — weekly Mondays only)
+      - name: Fetch NSE classification
+        run: |
+          DAY=$(date -u +%u)
+          if [ "$DAY" = "1" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            python fetch_nse_classification.py || echo "NSE classification failed (endpoint may have changed), continuing"
+          else
+            echo "Skipping NSE classification (runs Mondays UTC)"
+          fi
+        continue-on-error: true
 
       - name: Commit NSE classification
         run: |
@@ -147,12 +156,15 @@ jobs:
           git diff --cached --quiet || git commit -m "data: nse_classification $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 
-      # ── 10. Promoter pledging (NEW) ───────────────────────────────────────
-      # NSE's pledge disclosure API is finicky; continue-on-error is critical.
-      # Runs weekly (Mon only) — disclosures are quarterly filings.
-      - name: Fetch promoter pledging (weekly — Mondays only)
-        if: github.event_name == 'workflow_dispatch' || steps.dayname.outputs.day == 'Monday'
-        run: python fetch_pledging.py
+      # 10. Promoter pledging (NEW — weekly Mondays only)
+      - name: Fetch promoter pledging
+        run: |
+          DAY=$(date -u +%u)
+          if [ "$DAY" = "1" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            python fetch_pledging.py || echo "Pledging fetch failed (NSE API may have changed), continuing"
+          else
+            echo "Skipping pledging (runs Mondays UTC)"
+          fi
         continue-on-error: true
 
       - name: Commit pledging
@@ -161,12 +173,7 @@ jobs:
           git diff --cached --quiet || git commit -m "data: pledging $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 
-      # ── Summary ───────────────────────────────────────────────────────────
       - name: Print summary
         run: |
           echo "=== Refresh complete $(date -u '+%Y-%m-%d %H:%M UTC') ==="
-          echo "Files present:"
-          ls -lh *.json 2>/dev/null | awk '{print $5, $9}' || echo "none"
-          echo ""
-          echo "If any step shows 'Error' above, its JSON from the previous"
-          echo "run is still live — the dashboard degrades gracefully."
+          ls -lh *.json 2>/dev/null | awk '{print $5, $9}' || echo "no JSON files"
