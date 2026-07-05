@@ -87,8 +87,14 @@ table.grid tr:last-child td{border-bottom:none;}
 .hint{font-size:14px;color:var(--dim);margin-top:14px;}
 
 .backbtn{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:7px 14px;
-  font-size:14px;color:var(--ink);margin-bottom:18px;}
+  font-size:14px;color:var(--ink);margin-bottom:18px;cursor:pointer;}
 .backbtn:hover{border-color:var(--accent);}
+/* floating back button — always visible on the tearsheet, below the TERMINAL logo */
+.backbtn-float{position:fixed;top:64px;left:14px;z-index:45;margin:0;padding:8px 14px;
+  border-color:var(--accent);color:var(--accent);font-weight:600;
+  box-shadow:0 4px 14px rgba(20,20,18,.14);}
+.backbtn-float:hover{background:var(--accent);color:#fff;}
+@media(max-width:760px){.backbtn-float{top:auto;bottom:16px;left:12px;}}
 .tshead{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--line);}
 .tsticker{font-size:30px;font-weight:800;letter-spacing:-.5px;}
 .tsmkt{font-size:13.5px;color:var(--dim);font-weight:500;margin-left:8px;}

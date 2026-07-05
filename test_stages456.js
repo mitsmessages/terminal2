@@ -116,8 +116,8 @@ const { JSDOM } = require("jsdom");
   click('[data-wfack]'); click('[data-wfrun]');
   const s4 = () => w.eval(`JSON.stringify({pass:State.funnel.stageResults[4].pass, fail:State.funnel.stageResults[4].fail.map(f=>({t:f.t,r:f.reasons.join(" | ")}))})`);
   t("PRICEYX rejected — expectations unbeatable", w.eval(`State.funnel.stageResults[4].fail.some(f=>f.t==="PRICEYX"&&/implies/.test(f.reasons.join()))`), s4());
-  t("PRICEYX re-entry ticket carries a computed PRICE", w.eval(`State.funnel.tickets.some(tk=>tk.t==="PRICEYX"&&tk.stage===4&&/Becomes interesting below ₹/.test(tk.reentry.join()))`),
-    w.eval(`JSON.stringify(State.funnel.tickets.filter(tk=>tk.t==="PRICEYX").map(tk=>tk.reentry))`));
+  t("PRICEYX re-entry carries a computed PRICE", w.eval(`State.funnel.stageResults[4].fail.some(f=>f.t==="PRICEYX"&&/Becomes interesting below ₹/.test(f.reentry.join()))`),
+    w.eval(`JSON.stringify(State.funnel.stageResults[4].fail.filter(f=>f.t==="PRICEYX").map(f=>f.reentry))`));
   t("PREMX passes 4.2 via the EXPLICIT quality exception", w.eval(`State.funnel.stageResults[4].detail["PREMX"].some(c=>c.id==="sectorpe"&&c.status==="pass"&&/exception/.test(c.reason))`),
     w.eval(`JSON.stringify(State.funnel.stageResults[4].detail["PREMX"])`));
   t("CLEANCO passes all price checks incl. India-bond spread", w.eval(`State.funnel.stageResults[4].pass.includes("CLEANCO") && State.funnel.stageResults[4].detail["CLEANCO"].some(c=>c.id==="bondspread"&&/India 10Y 6.8/.test(c.reason))`), s4());
@@ -131,7 +131,7 @@ const { JSDOM } = require("jsdom");
   t("HOSTILEX PASSES despite hostile history — soft warns don't reject", w.eval(`State.funnel.stageResults[5].pass.includes("HOSTILEX")`), s5());
   t("HOSTILEX carries the reaction CAUTION in detail", w.eval(`State.funnel.stageResults[5].detail["HOSTILEX"].some(c=>c.id==="reactions"&&c.status==="warn"&&/personality/.test(c.reason))`));
   t("caution badge shown on passed roster row", has("caution"));
-  t("CUTX re-entry: revisions stabilizing", w.eval(`State.funnel.tickets.some(tk=>tk.t==="CUTX"&&/stabilizes above/.test(tk.reentry.join()))`));
+  t("CUTX re-entry: revisions stabilizing", w.eval(`State.funnel.stageResults[5].fail.some(f=>f.t==="CUTX"&&/stabilizes above/.test(f.reentry.join()))`));
   click('[data-wfnext]');
 
   console.log("\n[Stage 6 — Fit & Size]");
@@ -161,5 +161,5 @@ const { JSDOM } = require("jsdom");
   t("zero page errors throughout", errors.length===0, errors.join(" | "));
 
   console.log(`\n${pass} passed, ${fail} failed`);
-  process.exit(fail?1:0);
-})();
+  process.exit(fail?1:0)})();
+;

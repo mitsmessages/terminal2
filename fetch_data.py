@@ -345,17 +345,23 @@ def main():
     import os
     target = "public/data.json" if os.path.isdir("public") else "data.json"
 
-    # Load the previous run's output (if any) so we can carry forward last
-    # period's insider/promoter % as prevInsiderPct -- this is how the trend
-    # accumulates for free across successive runs, with no paid history API.
-    prev_insider = {}
+    # Load ownership_history.json — a small accumulator that persists insider/
+    # promoter % across runs. Each entry is {ticker: [{pct, date}, ...]}.
+    # We keep the last 8 observations; prevInsiderPct is the oldest available,
+    # so the trend survives runs where the value didn't change (the old bug).
+    OWNERSHIP_HIST = "ownership_history.json"
+    ownership_hist = {}
     try:
-        old = json.load(open(target))
-        for rec in old:
-            if rec.get("insiderPct") is not None:
-                prev_insider[rec["t"]] = rec["insiderPct"]
+        ownership_hist = json.load(open(OWNERSHIP_HIST))
     except Exception:
-        pass  # first run ever, or file missing/corrupt -- fine, just no history yet
+        pass  # first run or missing file -- starts empty, builds from here
+
+    def prev_insider_pct(ticker):
+        """Return the oldest recorded pct for this ticker, or None."""
+        obs = ownership_hist.get(ticker, [])
+        if len(obs) < 2:
+            return None          # need at least 2 points to show a trend
+        return obs[0]["pct"]     # oldest observation
 
     # Custom tickers: the Portfolio tab writes/downloads custom_tickers.json
     # ({"US":["TICK"], "IN":["TICK"]}) — drop it in the repo root and the
@@ -381,9 +387,19 @@ def main():
         print(f"[{i}/{len(jobs)}] {s} ({m})")
         r = _pull_with_retry(s, m)
         if r:
-            old_val = prev_insider.get(s)
-            if old_val is not None and old_val != r.get("insiderPct"):
-                r["prevInsiderPct"] = old_val
+            current_pct = r.get("insiderPct")
+            r["prevInsiderPct"] = prev_insider_pct(s)
+            # Append this run's observation to ownership_history
+            if current_pct is not None:
+                today = __import__("datetime").date.today().isoformat()
+                obs = ownership_hist.get(s, [])
+                # Only record if date changed or list is empty (avoid duplicates
+                # Only record if date changed or list is empty (avoid duplicates
+                # from same-day re-runs like CI retries)
+                if not obs or obs[-1]["date"] != today:
+                    obs.append({"pct": current_pct, "date": today})
+                obs = obs[-8:]   # keep last 8 observations
+                ownership_hist[s] = obs
             out.append(r)
         time.sleep(RATE_LIMIT_SEC)
     def clean(o):
@@ -396,7 +412,10 @@ def main():
         return o
     out = clean(out)
     json.dump(out, open(target, "w"), indent=2, allow_nan=False)
+    json.dump(ownership_hist, open(OWNERSHIP_HIST, "w"), indent=2)
+    tracked = sum(1 for v in ownership_hist.values() if len(v) >= 2)
     print(f"\nWrote {target} with {len(out)} stocks. Refresh the browser to load it.")
+    print(f"ownership_history.json updated — {tracked} ticker(s) with enough history to show a trend.")
 
 
 # status written inside main() or by fetch_custom.py
