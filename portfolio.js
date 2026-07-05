@@ -132,15 +132,53 @@ function pfCompute(){
     weightsValid: items.length>0 && items.every(x=>x.weight!=null)};
 }
 
+/* ---------- 6-gate scoring (same rule as the Workflow funnel) ----------
+   Gates 1–5 = funnel stages (Integrity, Forensics, Quality, Price, Timing):
+   a gate passes when NONE of its conditions hard-fail ("na" never fails a
+   gate, matching the funnel's own philosophy — unverified ≠ failed).
+   Gate 6 = Fit & Size: position within the worst-year sizing floor.
+   Colors: 5–6 passed = green · 3–4 = orange · 0–2 = red. */
+function pfGates(x){
+  const gates = [1,2,3,4,5].map(id=>{
+    const res = x.audit.stages[id]||[];
+    const fails = res.filter(r=>r.status==="fail");
+    const warns = res.filter(r=>r.status==="warn");
+    const allNa = res.length>0 && res.every(r=>r.status==="na");
+    return {id, name:FUNNEL_STAGES.find(st=>st.id===id)?.short||("S"+id),
+      status: fails.length?"fail":allNa?"na":"pass", fails, warns, res};
+  });
+  let g6status="na", g6reason="Add quantity & avg cost to check position size against the worst-year floor.";
+  if(x.weight!=null && x.size){
+    if(x.weight <= x.size.maxPos*1.25){ g6status="pass"; g6reason=`Position ${x.weight.toFixed(1)}% of portfolio — within the worst-year sizing guidance (≤ ${x.size.maxPos.toFixed(1)}%).`; }
+    else { g6status="fail"; g6reason=`Position ${x.weight.toFixed(1)}% of portfolio exceeds the worst-year sizing guidance of ≤ ${x.size.maxPos.toFixed(1)}% (assumed ~${x.size.assumed.toFixed(0)}% worst-year markdown vs your ${State.portfolio.lossTol}% pain limit).`; }
+  } else if(x.weight!=null){ g6status="pass"; g6reason="No worst-year history to size against — treated as passing, but start smaller than feels necessary."; }
+  gates.push({id:6, name:"Fit", status:g6status,
+    fails: g6status==="fail"?[{label:"Position size", status:"fail", reason:g6reason}]:[],
+    warns:[], res:[{label:"Position size within worst-year floor", status:g6status, reason:g6reason}]});
+  const passed = gates.filter(g=>g.status!=="fail").length;
+  return {gates, passed,
+    color: passed>=5?"var(--good)":passed>=3?"#b8860b":"var(--warn)",
+    band:  passed>=5?"green":passed>=3?"orange":"red"};
+}
+
 /* ---------- optimization suggestions (rule-based, evidence-first) ---------- */
 function pfOptimize(pc){
   const S=[];
   const add=(sev,title,detail)=>S.push({sev,title,detail});
-  // R1: honesty/integrity failures — highest priority
+  // R1: failed funnel conditions — severity now follows the 6-gate rule
+  // (a stock passing 5/6 gates with one data quirk is NOT treated like a
+  //  stock failing half the funnel).
   pc.items.forEach(x=>{
-    const f12 = x.audit.hardFails.filter(f=>f.stage<=2);
-    if(f12.length) add(1, `Review ${x.h.t} — fails the honesty gates you'd apply to a NEW stock`,
-      `${f12.map(f=>`${f.stageName}: ${f.reason}`).join(" ")} Holding a stock exempts it from nothing — if it wouldn't get in today, ask why it stays.`);
+    const fails = x.audit.hardFails;
+    if(!fails.length) return;
+    const g = pfGates(x);
+    const sev = g.passed<=2 ? 1 : g.passed<=4 ? 2 : 3;
+    const failedStages = [...new Set(fails.map(f=>`S${f.stage} ${f.stageName}`))].join(", ");
+    add(sev, `${x.h.t}: ${g.passed}/6 gates passed — failing condition${fails.length>1?"s":""} in ${failedStages}`,
+      `${fails.map(f=>`<b>S${f.stage} ${f.stageName} — ${f.label}:</b> ${f.reason}${f.reentry?` <i style="color:var(--dim)">Clears when: ${f.reentry}</i>`:""}`).join("<br>")}<br>${
+        g.passed>=5
+        ? `Everything else qualifies — one failing condition in an otherwise passing stock. Check whether the DATA changed (splits, mergers and bonus issues often distort share-count or price history) or the BUSINESS changed; they demand very different responses.`
+        : `Holding a stock exempts it from nothing — if it wouldn't get in today, ask why it stays.`}`);
   });
   // R2: oversized vs the worst-year floor
   pc.items.forEach(x=>{
@@ -275,15 +313,27 @@ function renderPortfolio(){
     </div>`;
   }
 
-  /* sector concentration */
+  /* sector concentration — click a sector to expand its holdings */
   let concCard = "";
   if(pc.weightsValid && Object.keys(pc.bySec).length){
-    concCard = `<div class="panel wide"><div class="panelhead"><span class="panelt">Concentration</span></div>
-      ${Object.entries(pc.bySec).sort((a,b)=>b[1]-a[1]).map(([k,wt])=>`
-        <div style="display:flex;align-items:center;gap:10px;margin:5px 0">
-          <div style="width:220px;font-size:13px">${k}</div>
+    concCard = `<div class="panel wide"><div class="panelhead"><span class="panelt">Concentration</span><span class="panels">click a sector to see which holdings drive it</span></div>
+      ${Object.entries(pc.bySec).sort((a,b)=>b[1]-a[1]).map(([k,wt])=>{
+        const open = State.pfConcOpen===k;
+        const inSec = pc.items.filter(x=>x.weight!=null && `${x.s.sec} (${x.s.mkt})`===k).sort((a,b)=>b.weight-a.weight);
+        return `
+        <div data-pfconc="${k.replace(/"/g,"&quot;")}" style="display:flex;align-items:center;gap:10px;margin:5px 0;cursor:pointer" title="Click to ${open?"collapse":"expand"}">
+          <div style="width:220px;font-size:13px">${open?"▾":"▸"} ${k} <span style="color:var(--dim);font-size:11.5px">(${inSec.length})</span></div>
           <div style="flex:1;background:var(--panel);border:1px solid var(--line);border-radius:4px;height:16px"><div style="width:${Math.min(wt,100)}%;height:100%;border-radius:3px;background:${wt>40?"var(--warn)":"var(--accent)"}"></div></div>
-          <div style="width:52px;text-align:right;font-family:var(--mono);font-size:13px;color:${wt>40?"var(--warn)":"var(--ink)"}">${wt.toFixed(1)}%</div></div>`).join("")}
+          <div style="width:52px;text-align:right;font-family:var(--mono);font-size:13px;color:${wt>40?"var(--warn)":"var(--ink)"}">${wt.toFixed(1)}%</div></div>
+        ${open?`<div style="margin:2px 0 10px 24px;padding:8px 12px;border-left:2px solid var(--line)">
+          ${inSec.map(x=>`<div style="display:flex;align-items:center;gap:10px;margin:3px 0;font-size:13px">
+            <span class="tname" data-open="${x.s.t}" style="cursor:pointer;width:120px">${x.s.t}</span>
+            <span style="color:var(--dim);flex:1">${x.s.n}</span>
+            <span style="color:${x.pnl==null?'var(--dim)':x.pnl>=0?'var(--good)':'var(--warn)'};width:70px;text-align:right;font-family:var(--mono);font-size:12.5px">${x.pnl==null?"—":(x.pnl>0?"+":"")+x.pnl.toFixed(1)+"%"}</span>
+            <span style="width:56px;text-align:right;font-family:var(--mono)">${x.weight.toFixed(1)}%</span></div>`).join("")}
+          <div style="font-size:11.5px;color:var(--dim);margin-top:6px">weight = share of total portfolio · click a ticker for its tearsheet</div>
+        </div>`:""}`;
+      }).join("")}
     </div>`;
   }
 
@@ -291,8 +341,38 @@ function renderPortfolio(){
   let optCard = "";
   if(pc.items.length){
     const sugg = pfOptimize(pc);
+    const icon = st => st==="pass"?"✓":st==="warn"?"⚠":st==="na"?"◌":"✗";
+    const iclr = st => st==="pass"?"var(--good)":st==="warn"?"#b8860b":st==="na"?"var(--dim)":"var(--warn)";
+    const gateRows = pc.items.slice().sort((a,b)=>(b.weight??-1)-(a.weight??-1)).map(x=>{
+      const g = pfGates(x);
+      const open = State.pfGateOpen===x.h.t;
+      return `
+      <div style="border:1px solid var(--line);border-left:3px solid ${g.color};border-radius:7px;margin-bottom:6px">
+        <div data-pfgate="${x.h.t}" style="display:flex;align-items:center;gap:12px;padding:8px 12px;cursor:pointer;flex-wrap:wrap">
+          <span style="width:14px;color:var(--dim)">${open?"▾":"▸"}</span>
+          <span class="tname" data-open="${x.s.t}" style="cursor:pointer;width:110px">${x.h.t}</span>
+          <span style="font-family:var(--mono);font-weight:700;color:${g.color};width:88px">${g.band==="green"?"🟢":g.band==="orange"?"🟠":"🔴"} ${g.passed}/6 gates</span>
+          <span style="display:flex;gap:8px;font-size:12px;font-family:var(--mono)">
+            ${g.gates.map(gt=>`<span title="S${gt.id} ${gt.name}${gt.fails.length?": "+gt.fails.map(f=>f.reason).join(" | ").replace(/"/g,"'"):""}" style="color:${iclr(gt.status)}">S${gt.id}${icon(gt.status)}</span>`).join("")}
+          </span>
+          ${x.weight!=null?`<span style="margin-left:auto;font-size:12px;color:var(--dim);font-family:var(--mono)">${x.weight.toFixed(1)}%</span>`:""}
+        </div>
+        ${open?`<div style="padding:4px 14px 12px 38px;border-top:1px solid var(--line)">
+          ${g.gates.map(gt=>`
+            <div style="margin-top:8px">
+              <div style="font-size:12.5px;font-weight:700;color:${iclr(gt.status)}">S${gt.id} ${FUNNEL_STAGES.find(st=>st.id===gt.id)?.name||gt.name} — ${gt.status==="fail"?"GATE FAILED":gt.status==="na"?"unverified":"gate passed"}</div>
+              ${(gt.res||[]).map(r=>`<div style="font-size:12.5px;color:var(--dim);line-height:1.55;margin:2px 0 0 12px"><span style="color:${iclr(r.status)}">${icon(r.status)}</span> <b>${r.label}</b>${r.reason?` — ${r.reason}`:""}</div>`).join("")}
+            </div>`).join("")}
+        </div>`:""}
+      </div>`;
+    }).join("");
     optCard = `<div class="panel wide" style="border:2px solid var(--accent)">
       <div class="panelhead"><span class="panelt">🎯 Optimization analysis (${sugg.length})</span><span class="panels">rule-based, evidence shown — you decide</span></div>
+      <div style="margin-bottom:14px">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">6-gate scorecard — the Workflow's rule applied to every holding</div>
+        <p style="font-size:12.5px;color:var(--dim);line-height:1.55;margin:0 0 8px">Gates = funnel stages S1 Integrity · S2 Forensics · S3 Quality · S4 Price · S5 Timing · S6 Fit&nbsp;&amp;&nbsp;Size. A gate fails only on a hard fail — ◌ unverified never counts against a stock. <b style="color:var(--good)">5–6 = green</b> · <b style="color:#b8860b">3–4 = orange</b> · <b style="color:var(--warn)">0–2 = red</b>. Click a row for every condition and reason.</p>
+        ${gateRows}
+      </div>
       ${sugg.length? sugg.map(s=>`<div style="padding:10px 14px;border:1px solid var(--line);border-left:3px solid ${s.sev===1?"var(--warn)":s.sev===2?"#b8860b":"var(--accent)"};border-radius:7px;margin-bottom:8px">
         <div style="font-weight:600;font-size:14px">${s.sev===1?"🔴":s.sev===2?"🟠":"🔵"} ${s.title}</div>
         <div style="font-size:13.5px;color:var(--dim);line-height:1.6;margin-top:4px">${s.detail}</div></div>`).join("")
@@ -360,6 +440,11 @@ function wirePortfolio(root){
       rd.readAsText(file);
     }
   });
+  root.querySelectorAll("[data-pfconc]").forEach(el=>el.onclick=()=>{
+    State.pfConcOpen = State.pfConcOpen===el.dataset.pfconc ? null : el.dataset.pfconc; render(); });
+  root.querySelectorAll("[data-pfgate]").forEach(el=>el.onclick=(e)=>{
+    if(e.target.closest("[data-open]")) return;   // ticker click opens the tearsheet instead
+    State.pfGateOpen = State.pfGateOpen===el.dataset.pfgate ? null : el.dataset.pfgate; render(); });
   on("[data-pfmkt]", el=>{ P.addMkt=el.dataset.pfmkt; savePortfolio(); render(); });
   on("[data-pfadd]", async ()=>{
     const t=(root.querySelector("#pfTicker")?.value||"").toUpperCase().trim().replace(/\.(NS|BO)$/,"");
