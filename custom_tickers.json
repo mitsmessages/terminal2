@@ -1,10 +1,11 @@
 {
-  "US": [],
+  "US": [
+    "NVO"
+  ],
   "IN": [
     "ADANIENPP1",
     "AREM",
     "BHARATAGRI",
-    "M-M",
-    "ABFRL"
+    "M-M"
   ]
 }
