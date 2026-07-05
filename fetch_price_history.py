@@ -72,9 +72,28 @@ def pull_history(ticker, mkt):
     return dates, closes, adv
 
 
+# Benchmark indices fetched on every run regardless of universe size.
+# Stored in price_history.json with isBenchmark:true so the portfolio
+# analytics layer can compare returns without a paid API.
+BENCHMARKS = [
+    {"ticker": "__NIFTY50__",  "yqTicker": "^NSEI",  "mkt": "IN",  "label": "Nifty 50"},
+    {"ticker": "__SP500__",    "yqTicker": "^GSPC",  "mkt": "US",  "label": "S&P 500"},
+]
+
+def pull_benchmark(yq_ticker):
+    """Pull weekly closes for a benchmark index (no ADV needed)."""
+    tk = yf.Ticker(yq_ticker)
+    hist = tk.history(period="2y", interval="1wk")
+    if hist.empty:
+        return None
+    dates = [d.strftime("%Y-%m-%d") for d in hist.index]
+    closes = [round(float(c), 2) for c in hist["Close"]]
+    return dates, closes
+
+
 def main(use_test_list=False):
     tickers = [(t, "US") for t in TEST_TICKERS] if use_test_list else load_universe()
-    print(f"\nPrice history fetch — {len(tickers)} tickers")
+    print(f"\nPrice history fetch — {len(tickers)} tickers + {len(BENCHMARKS)} benchmark indices")
     print("Source: Yahoo Finance weekly closes, 2yr window (free, via yfinance)")
     print("=" * 55)
 
@@ -99,11 +118,32 @@ def main(use_test_list=False):
             print(f"error: {e}")
         time.sleep(SLEEP_SEC)
 
+    # Fetch benchmark indices (always, regardless of use_test_list)
+    print("\nFetching benchmark indices...")
+    for bm in BENCHMARKS:
+        print(f"  {bm['label']} ({bm['yqTicker']})", end=" ... ")
+        try:
+            r = pull_benchmark(bm["yqTicker"])
+            if r:
+                dates, closes = r
+                results[bm["ticker"]] = {
+                    "ticker": bm["ticker"], "dates": dates, "closes": closes,
+                    "adv": None, "isBenchmark": True,
+                    "label": bm["label"], "mkt": bm["mkt"],
+                }
+                print(f"{len(dates)} weekly points")
+            else:
+                print("no data")
+        except Exception as e:
+            print(f"error: {e}")
+        time.sleep(SLEEP_SEC)
+
     out = list(results.values())
     json.dump(out, open("price_history.json", "w"))
-    print(f"\nWrote price_history.json with {len(out)} companies.")
+    benchmarks_fetched = sum(1 for v in out if v.get("isBenchmark"))
+    print(f"\nWrote price_history.json with {len(out)-benchmarks_fetched} companies + {benchmarks_fetched} benchmark index/indices.")
     print("The dashboard's price chart will pick this up automatically.")
-    print("To run the full universe (~2-3 hrs): change use_test_list=False in main()")
+    _write_status("fetch_price_history", len(out) - benchmarks_fetched)
 
 
 # status written inside main() or by fetch_custom.py
