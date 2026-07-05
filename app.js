@@ -2242,13 +2242,13 @@ function wireEvents(){
     globalSearchBox.onkeydown=e=>{
       if(e.key==="Enter"){
         const matches=globalSearchMatches(State.q,1);
-        if(matches.length){ State.sel=matches[0].t; State.tab="stocks"; State.q=""; render(); }
+        if(matches.length){ State.returnTab=State.tab; State.sel=matches[0].t; State.tab="stocks"; State.q=""; render(); window.scrollTo(0,0); }
       } else if(e.key==="Escape"){ State.q=""; render(); }
     };
     globalSearchBox.focus(); globalSearchBox.setSelectionRange(State.q.length,State.q.length);
   }
   root.querySelectorAll("[data-jumpto]").forEach(el=>el.onclick=()=>{
-    State.returnTab=State.tab; State.sel=el.dataset.jumpto; State.tab="stocks"; State.q=""; State.kpiExpanded=false; render();
+    State.returnTab=State.tab; State.sel=el.dataset.jumpto; State.tab="stocks"; State.q=""; State.kpiExpanded=false; render(); window.scrollTo(0,0);
   });
 
   root.querySelectorAll("[data-earningmarker]").forEach(el=>el.onclick=(e)=>{
@@ -2261,12 +2261,11 @@ function wireEvents(){
     }
   });
 
-  root.querySelectorAll("[data-open]").forEach(el=>el.onclick=(e)=>{ if(e.target.closest('[data-star]')||e.target.closest('[data-cmp]'))return; State.returnTab=State.tab; State.sel=el.dataset.open;State.tab="stocks";State.kpiExpanded=false;render();});
-  root.querySelectorAll("[data-opensector]").forEach(el=>el.onclick=()=>{ if(el.dataset.opensector){State.returnTab=State.tab; State.sel=el.dataset.opensector;State.tab="stocks";render();}});
+  root.querySelectorAll("[data-open]").forEach(el=>el.onclick=(e)=>{ if(e.target.closest('[data-star]')||e.target.closest('[data-cmp]'))return; State.returnTab=State.tab; State.sel=el.dataset.open;State.tab="stocks";State.kpiExpanded=false;render();window.scrollTo(0,0);});
+  root.querySelectorAll("[data-opensector]").forEach(el=>el.onclick=()=>{ if(el.dataset.opensector){State.returnTab=State.tab; State.sel=el.dataset.opensector;State.tab="stocks";render();window.scrollTo(0,0);}});
+  const goBack=()=>{State.sel=null; const rt=State.returnTab; if(rt&&rt!=="stocks"){State.tab=rt; State.returnTab=null;} render(); window.scrollTo({top:0,behavior:"smooth"});};
   const backBtn=document.getElementById("backBtn");
   if(backBtn) backBtn.onclick=()=>{State.sel=null; const rt=State.returnTab; if(rt&&rt!=="stocks"){State.tab=rt; State.returnTab=null;} render(); window.scrollTo({top:0,behavior:"smooth"});};
-  const backBtnFloat=document.getElementById("backBtnFloat");
-  if(backBtnFloat) backBtnFloat.onclick=()=>{State.sel=null; const rt=State.returnTab; if(rt&&rt!=="stocks"){State.tab=rt; State.returnTab=null;} render(); window.scrollTo({top:0,behavior:"smooth"});};
 
   root.querySelectorAll("[data-star]").forEach(el=>el.onclick=(e)=>{e.stopPropagation();toggleWatch(el.dataset.star);});
   root.querySelectorAll("[data-cmp]").forEach(el=>el.onclick=(e)=>{e.stopPropagation();toggleCompare(el.dataset.cmp);});
@@ -2288,6 +2287,20 @@ function wireEvents(){
     const detail=root.querySelector(`[data-flagdetail="${el.dataset.flagtoggle}"]`);
     if(detail) detail.style.display = detail.style.display==="none" ? "flex" : "none";
   });
+
+  /* live AI chat (Gemini) */
+  const aiKeySave=root.querySelector("[data-aikeysave]");
+  if(aiKeySave) aiKeySave.onclick=()=>{ const v=(document.getElementById("aiKeyInput")?.value||"").trim(); setGeminiKey(v);
+    try{ localStorage.removeItem("terminal_gemini_model"); localStorage.removeItem("terminal_gemini_tools"); }catch(e){}
+    GEMINI_MODELS_CACHE=null; State.aiKeyEdit=false; render(); };
+  const aiKeyEdit=root.querySelector("[data-aikeyedit]");
+  if(aiKeyEdit) aiKeyEdit.onclick=()=>{ State.aiKeyEdit=true; render(); };
+  const aiSend=root.querySelector("[data-aisend]");
+  const aiFire=()=>{ const inp=document.getElementById("aiChatInput"); if(inp && inp.value.trim() && State.sel) sendAIMessage(State.sel, inp.value); };
+  if(aiSend) aiSend.onclick=aiFire;
+  const aiInput=document.getElementById("aiChatInput");
+  if(aiInput) aiInput.onkeydown=e=>{ if(e.key==="Enter") aiFire(); };
+  root.querySelectorAll("[data-aichip]").forEach(el=>el.onclick=()=>{ if(State.sel) sendAIMessage(State.sel, el.dataset.aichip); });
 
   root.querySelectorAll("[data-ask]").forEach(el=>el.onclick=()=>handleAsk(el.dataset.tk, el.dataset.ask));
   root.querySelectorAll("[data-earnings]").forEach(el=>el.onclick=()=>handleEarnings(el.dataset.earnings));
