@@ -1,7 +1,7 @@
 {
   "fetch_custom": {
     "status": "partial",
-    "fetched": 80,
+    "fetched": 1,
     "failed": 4,
     "failedTickers": [
       "ADANIENPP1",
@@ -9,6 +9,6 @@
       "BHARATAGRI",
       "M-M"
     ],
-    "updatedAt": "2026-07-05T08:11:05.632961+00:00"
+    "updatedAt": "2026-07-05T13:06:50.680276+00:00"
   }
 }
