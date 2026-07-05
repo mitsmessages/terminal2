@@ -30,6 +30,23 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
+def _get(session, url, max_retries=3, backoff=2.0):
+    """GET with exponential-backoff retry. Respects 429 Retry-After header."""
+    for attempt in range(max_retries):
+        try:
+            r = session.get(url, timeout=20)
+            if r.status_code == 429:
+                wait = float(r.headers.get("Retry-After", backoff * (attempt+1)))
+                print(f"    429 rate-limited — waiting {wait:.0f}s")
+                time.sleep(wait)
+                continue
+            return r
+        except requests.RequestException as e:
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(backoff * (attempt+1))
+    return None
+
 # ------------------------------------------------------------------ #
 #  CONFIG
 # ------------------------------------------------------------------ #
@@ -407,9 +424,16 @@ def main(use_test_list=True):
                     print(f"    {date}: text too short ({len(text or '')} chars), skipping")
                     continue
                 key_sections = extract_key_sections(text)
+                # Fix 4: cap stored text to prevent edgar_transcripts.json
+                # growing to 50-100MB as the universe scales. key_sections has
+                # the structured highlights; the raw text truncation only affects
+                # the manual paste-back preview, which the user can always get
+                # by visiting the url directly.
+                MAX_TEXT = 4000
                 quarters.append({
                     "date": date, "accession": acc,
-                    "url": exhibit_url, "text": text,
+                    "url": exhibit_url,
+                    "text": text[:MAX_TEXT] + ("…[truncated — open URL for full text]" if len(text)>MAX_TEXT else ""),
                     "key_sections": key_sections,
                 })
                 print(f"    {date}: {len(text)} chars ✓")

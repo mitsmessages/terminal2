@@ -21,17 +21,9 @@
    ============================================================ */
 
 /* ---------- classification.json (NSE index membership) ---------- */
-let CLASSIFICATION = null;
-fetch("classification.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
-  CLASSIFICATION = d;
-  if (typeof render === "function") render();
-}).catch(()=>{ /* fine — Stage 0 falls back to "all fetched Nifty names" */ });
+// CLASSIFICATION loaded by app.js (centralised fetch batch)
 
-let PLEDGING_DATA = null;
-fetch("pledging.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
-  PLEDGING_DATA = d.symbols || d;
-  if (typeof render === "function") render();
-}).catch(()=>{ /* fine — the pledging condition reports honestly as unverified */ });
+// PLEDGING_DATA loaded by app.js (centralised fetch batch)
 
 const IN_INDEX_LABELS = {
   NIFTY50:"Nifty 50", NIFTY100:"Nifty 100", NIFTY200:"Nifty 200", NIFTY500:"Nifty 500",

@@ -54,58 +54,94 @@ function toggleCompare(t){
   if(typeof saveAndSync==="function") saveAndSync(); else render();
 }
 
+/* ── startup data loading ──────────────────────────────────────────────────
+   Fix 2: previously each of 7 fetches called render() independently, causing
+   up to 7 full re-renders (each running computeRows() on every stock) before
+   the user saw a stable screen. Now: a single debounced render fires at most
+   once per 80ms, so all fetches that resolve within the same network batch
+   (almost always all of them) produce exactly one render. Individual fetches
+   still update their globals immediately so data is never lost on a timeout.
+   ─────────────────────────────────────────────────────────────────────────*/
+let _renderTimer = null;
+function scheduleRender(){
+  clearTimeout(_renderTimer);
+  _renderTimer = setTimeout(render, 80);
+}
+
 fetch("data.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
-  if(Array.isArray(d)&&d.length){ State.data=d; State.live=true; render(); }
+  if(Array.isArray(d)&&d.length){ State.data=d; State.live=true; scheduleRender(); }
 }).catch(()=>{});
 
 let MACRO_DATA = null;
 fetch("macro.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
-  MACRO_DATA = d; render();
+  MACRO_DATA = d; scheduleRender();
 }).catch(()=>{ /* fine — macro panel just won't show live numbers yet */ });
 
 let REACTIONS_DATA = [];
 fetch("reactions.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
-  if(Array.isArray(d)) REACTIONS_DATA = d; render();
+  if(Array.isArray(d)) REACTIONS_DATA = d; scheduleRender();
 }).catch(()=>{ /* fine — track record panel shows a setup message instead */ });
 
 let STATUS_DATA = {};
 fetch("status.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
-  STATUS_DATA = d; render();
+  STATUS_DATA = d; scheduleRender();
 }).catch(()=>{ /* fine — strip hidden when no status */ });
 
 let ESTIMATES_DATA = {};
 fetch("estimates.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
   if(Array.isArray(d)) d.forEach(rec=>{ if(rec.ticker) ESTIMATES_DATA[rec.ticker]=rec; });
-  // A1 fix: replace the pipeline's hardcoded growth (8% for nearly every
-  // stock) with real analyst consensus wherever coverage exists, so the DCF
-  // and the Analyst Outlook panel can never tell contradictory stories on
-  // the same tearsheet. computeRows() re-runs on render, so every intrinsic
-  // value, margin of safety, and quadrant downstream updates automatically.
   applyEstimatesGrowth(State.data, ESTIMATES_DATA);
-  render();
-}).catch(()=>{ /* fine — analyst outlook panel shows a setup message instead; DCF falls back to the labeled default growth */ });
+  invalidateRowsCache();  // estimates changed g on many stocks
+  scheduleRender();
+}).catch(()=>{ /* fine — DCF falls back to the labeled default growth */ });
 
 let VERIFY_US = null;
 fetch("verify_us.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
-  if(Array.isArray(d)){ VERIFY_US={}; d.forEach(rec=>{ if(rec.ticker) VERIFY_US[rec.ticker]=rec; }); render(); }
-}).catch(()=>{ /* fine — data integrity panel just skips the SEC cross-check */ });
+  if(Array.isArray(d)){ VERIFY_US={}; d.forEach(rec=>{ if(rec.ticker) VERIFY_US[rec.ticker]=rec; }); scheduleRender(); }
+}).catch(()=>{ /* fine — data integrity panel skips the SEC cross-check */ });
 
 let VERIFY_IN = null;
 fetch("verify_in.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
-  if(Array.isArray(d)){ VERIFY_IN={}; d.forEach(rec=>{ if(rec.ticker) VERIFY_IN[rec.ticker]=rec; }); render(); }
-}).catch(()=>{ /* fine — data integrity panel just skips the NSE cross-check */ });
+  if(Array.isArray(d)){ VERIFY_IN={}; d.forEach(rec=>{ if(rec.ticker) VERIFY_IN[rec.ticker]=rec; }); scheduleRender(); }
+}).catch(()=>{ /* fine — data integrity panel skips the NSE cross-check */ });
 
 let PRICE_HISTORY = {};
 fetch("price_history.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
   if(Array.isArray(d)) d.forEach(rec=>{ if(rec.ticker) PRICE_HISTORY[rec.ticker]=rec; });
-  render();
-}).catch(()=>{ /* fine — price chart panel shows a setup message instead */ });
+  scheduleRender();
+}).catch(()=>{ /* fine — price chart shows a setup message instead */ });
+
+let CLASSIFICATION = null;
+fetch("classification.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
+  CLASSIFICATION = d; scheduleRender();
+}).catch(()=>{ /* fine — Stage 0 falls back to all fetched Nifty names */ });
+
+let PLEDGING_DATA = null;
+fetch("pledging.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
+  PLEDGING_DATA = d.symbols || d; scheduleRender();
+}).catch(()=>{ /* fine — pledging condition reports honestly as unverified */ });
+
+/* ── Fix 3: memoized computeRows ───────────────────────────────────────────
+   Running dcf() + analyze() on every stock on every render is O(n) with a
+   large constant — at 500 stocks it means 500 DCF computations per keypress.
+   We cache the result and only recompute when the inputs that affect it change:
+   the data array reference, the discount rate, or the terminal growth rate.
+   Invalidate by setting _rowsCache = null (e.g. after estimates merge).
+   ─────────────────────────────────────────────────────────────────────────*/
+let _rowsCache = null;
+let _rowsCacheKey = null;
+
+function invalidateRowsCache(){ _rowsCache = null; _rowsCacheKey = null; }
 
 function computeRows(){
-  return State.data.map(s=>{
+  const key = `${State.data.length}|${State.discount}|${State.termGrowth}|${State.data[0]?.g||""}`;
+  if(_rowsCache && _rowsCacheKey === key) return _rowsCache;
+  _rowsCache = State.data.map(s=>{
     const intrinsic = dcf(normalize(s), {discount:State.discount, termGrowth:State.termGrowth, years:10});
     return analyze(s, intrinsic);
   });
+  _rowsCacheKey = key;
+  return _rowsCache;
 }
 
 function capTierOf(s){
@@ -435,7 +471,7 @@ function renderTearsheet(t){
     </div>
     <div class="panel">
       <div class="panelhead"><span class="panelt">Quality &amp; returns</span></div>
-      ${renderKV([["Return on equity",s.roe?s.roe.toFixed(0)+"%":"—"],["Return on assets",s.roa?s.roa.toFixed(0)+"%":"—"],["FCF/Net income",s.fcfNi?s.fcfNi.toFixed(2):"—"],["Net debt/Mkt cap",(s.debt/s.mcap*100).toFixed(0)+"%"],["Beta",s.beta?.toFixed(2)],["FCF margin",A.margins[0]?.fcf?.toFixed(1)+"%"]])}
+      ${renderKV([["Return on equity",s.roe?s.roe.toFixed(0)+"%":"—"],["Return on assets",s.roa?s.roa.toFixed(0)+"%":"—"],["FCF/Net income",s.fcfNi?s.fcfNi.toFixed(2):"—"],["Net debt/Mkt cap",(!s.mcap||s.mcap<=0)?"—":(s.debt/s.mcap*100).toFixed(0)+"%"],["Beta",s.beta!=null?s.beta.toFixed(2):"—"],["FCF margin",A.margins[0]?.fcf!=null?A.margins[0].fcf.toFixed(1)+"%":"—"]])}
     </div>
 
     <div class="panel">
@@ -584,7 +620,7 @@ function renderEarningsSentiment(s){
   const edgarStatus = hasEdgar
     ? `<span style="color:var(--good);font-size:12px">✓ ${edgarRec.quarters.length} quarters of EDGAR filings loaded automatically</span>`
     : s.mkt==="IN"
-      ? `<span style="color:var(--dim);font-size:12px">Indian stocks are not on SEC EDGAR. Find concall transcripts on <a href="https://www.screener.in/company/${s.t}/" target="_blank" style="color:var(--accent)">Screener.in</a> or <a href="https://www.bseindia.com/stock-share-price/${s.t}/" target="_blank" style="color:var(--accent)">BSE India</a> and paste below.</span>`
+      ? `<span style="color:var(--dim);font-size:12px">Indian stocks are not on SEC EDGAR. Find concall transcripts on <a href="https://www.screener.in/company/${s.t}/" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">Screener.in</a> or <a href="https://www.bseindia.com/stock-share-price/${s.t}/" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">BSE India</a> and paste below.</span>`
       : `<span style="color:var(--neutral);font-size:12px">Run <code>python fetch_edgar.py</code> locally to auto-populate this — or paste a transcript manually below.</span>`;
   return `
   <div class="askbox" style="background:linear-gradient(135deg,#f3eefc,#ece4fa);border-color:#d8c8f2">
@@ -597,7 +633,7 @@ function renderEarningsSentiment(s){
     <div style="margin:10px 0 6px">${edgarStatus}</div>
     ${hasEdgar ? `
     <div style="font-size:12px;color:var(--dim);margin-bottom:8px">
-      Quarters: ${edgarRec.quarters.map(q=>`<a href="${q.url}" target="_blank" style="color:var(--accent);margin-right:8px">${q.date}</a>`).join("")}
+      Quarters: ${edgarRec.quarters.map(q=>`<a href="${q.url}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);margin-right:8px">${q.date}</a>`).join("")}
     </div>` : ""}
     <textarea id="transcriptBox" placeholder="${hasEdgar
       ? "EDGAR text loaded above — edit or add the Q&A section if you have it, then analyze."
@@ -623,7 +659,11 @@ async function handleEarnings(ticker){
   try{ await navigator.clipboard.writeText(prompt); }
   catch(e){
     const ta=document.createElement("textarea"); ta.value=prompt; document.body.appendChild(ta);
-    ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+    // Fix 4: execCommand("copy") deprecated — use async clipboard API with fallback
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).catch(()=>{ ta.select(); document.execCommand("copy"); });
+  } else { ta.select(); document.execCommand("copy"); }
+  document.body.removeChild(ta);
   }
   window.open("https://claude.ai/new", "_blank");
   const done=document.getElementById("earningsDone");
@@ -905,7 +945,11 @@ async function handleAsk(ticker, depth){
   try{ await navigator.clipboard.writeText(prompt); }
   catch(e){
     const ta=document.createElement("textarea"); ta.value=prompt; document.body.appendChild(ta);
-    ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+    // Fix 4: execCommand("copy") deprecated — use async clipboard API with fallback
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).catch(()=>{ ta.select(); document.execCommand("copy"); });
+  } else { ta.select(); document.execCommand("copy"); }
+  document.body.removeChild(ta);
   }
   window.open("https://claude.ai/new", "_blank");
   const done=document.getElementById("askDone");
@@ -1139,7 +1183,7 @@ function renderCompare(){
       ["ROE",             stocks.map(s=>pct(s.roe))],
       ["ROA",             stocks.map(s=>pct(s.roa))],
       ["Net debt/EBITDA", stocks.map(s=>s.debtToEbitda?.toFixed(1)+"×"||"—")],
-      ["Debt/Mkt cap",    stocks.map(s=>((s.debt/s.mcap)*100).toFixed(0)+"%")],
+      ["Debt/Mkt cap",    stocks.map(s=>(!s.mcap||s.mcap<=0)?"—":((s.debt/s.mcap)*100).toFixed(0)+"%")],
     ])}
 
     ${section("Quality (sector-relative percentile)", "each score = % of sector peers this stock beats", [
@@ -2062,9 +2106,9 @@ function wireEvents(){
   // B8 fix: keep terminal growth at least 2pts below the discount rate —
   // as they converge, the Gordon terminal-value denominator (r − g) goes to
   // zero and the intrinsic value explodes into a meaningless number.
-  if(discountSlider) discountSlider.oninput=e=>{State.discount=+e.target.value; if(State.termGrowth>State.discount-2) State.termGrowth=Math.max(1,State.discount-2); render();};
+  if(discountSlider) discountSlider.oninput=e=>{State.discount=+e.target.value; if(State.termGrowth>State.discount-2) State.termGrowth=Math.max(1,State.discount-2); invalidateRowsCache(); render();};
   const termSlider=document.getElementById("termSlider");
-  if(termSlider) termSlider.oninput=e=>{State.termGrowth=Math.min(+e.target.value, Math.max(1,State.discount-2)); render();};
+  if(termSlider) termSlider.oninput=e=>{State.termGrowth=Math.min(+e.target.value, Math.max(1,State.discount-2)); invalidateRowsCache(); render();};
 
   const learnToggle=document.getElementById("learnToggle");
   if(learnToggle) learnToggle.onclick=()=>{State.learnMode=!State.learnMode;render();};

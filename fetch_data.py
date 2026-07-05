@@ -208,6 +208,26 @@ def _div_yield(info, price):
     return round(dy * 100, 2) if dy < 0.25 else round(dy, 2)
 
 
+RATE_LIMIT_SEC = 0.3   # conservative: ~3 req/sec; Yahoo throttles around 5-10/sec
+
+def _pull_with_retry(sym, mkt, max_retries=3):
+    """Retry wrapper for pull() with exponential backoff."""
+    for attempt in range(max_retries):
+        try:
+            result = pull(sym, mkt)
+            if result is not None:
+                return result
+            # None means "resolved but no useful data" — no point retrying
+            return None
+        except Exception as e:
+            if attempt == max_retries - 1:
+                print(f"    ✗ {sym}: {e} (gave up after {max_retries} attempts)")
+                return None
+            wait = (attempt+1) * 2.0
+            print(f"    ⚠ {sym}: {e} — retry in {wait:.0f}s")
+            time.sleep(wait)
+    return None
+
 def pull(sym, mkt):
     yq = sym + (".NS" if mkt == "IN" else "")
     tk = yf.Ticker(yq)
@@ -342,22 +362,17 @@ def main():
     us_all = list(dict.fromkeys(US + custom["US"]))   # dedupe, keep order
     in_all = list(dict.fromkeys(IN + custom["IN"]))
     out, jobs = [], [(s, "US") for s in us_all] + [(s, "IN") for s in in_all]
-    est_min = round(len(jobs) * 1.0 / 60, 1)
-    print(f"Fetching {len(jobs)} tickers (~{est_min} min at 1 req/sec)...\n")
+    est_min = round(len(jobs) * (RATE_LIMIT_SEC + 0.5) / 60, 1)
+    print(f"Fetching {len(jobs)} tickers (~{est_min} min)...\n")
     for i, (s, m) in enumerate(jobs, 1):
         print(f"[{i}/{len(jobs)}] {s} ({m})")
-        try:
-            r = pull(s, m)
-            if r:
-                # carry forward last run's value as prevInsiderPct, but only
-                # if it actually differs from today's (otherwise no new info)
-                old_val = prev_insider.get(s)
-                if old_val is not None and old_val != r.get("insiderPct"):
-                    r["prevInsiderPct"] = old_val
-                out.append(r)
-        except Exception as e:
-            print(f"  ! {s}: {e}")
-        time.sleep(1.0)
+        r = _pull_with_retry(s, m)
+        if r:
+            old_val = prev_insider.get(s)
+            if old_val is not None and old_val != r.get("insiderPct"):
+                r["prevInsiderPct"] = old_val
+            out.append(r)
+        time.sleep(RATE_LIMIT_SEC)
     def clean(o):
         if isinstance(o, float):
             return None if (o != o or o in (float("inf"), float("-inf"))) else o

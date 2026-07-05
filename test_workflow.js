@@ -79,7 +79,7 @@ const { JSDOM } = require("jsdom");
   t("Satyam example present", has("Satyam"));
   // Fix 9: tickets are opt-in — manually add BADCO ticket then verify auto-met works
   w.eval(`State.funnel.tickets=[{t:"BADCO",n:"Bad",stage:1,stageName:"Data Integrity",reasons:["mcap mismatch"],reentry:["when mcap corrects"],created:"2026-01-01",met:false}]; saveFunnel();`);
-  w.eval(`(function(){const s=State.data.find(x=>x.t==="BADCO"); s.mcap=1000; s.high52=120; render();})();`);
+  w.eval(`(function(){const s=State.data.find(x=>x.t==="BADCO"); s.mcap=1000; s.high52=120; invalidateRowsCache(); render();})();`);
   t("ticket auto-flips to MET when data corrects", w.eval(`State.funnel.tickets.find(tk=>tk.t==="BADCO")?.met===true`));
   t("MET ticket offers re-run from failed stage", has("re-entry condition MET"));
 

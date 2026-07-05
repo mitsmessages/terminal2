@@ -231,7 +231,7 @@ function renderPortfolio(){
   /* holdings table */
   const ghCard = `<div class="panel wide">
     <div class="panelhead"><span class="panelt">GitHub auto-push (optional)</span><span class="panels">push custom_tickers.json automatically — no manual file steps</span></div>
-    <p style="font-size:13.5px;color:var(--dim);line-height:1.6">Set once. Every time you add a custom ticker, the file is pushed to your repo automatically and the GitHub Actions workflow fetches it within ~2 minutes. Needs a <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="color:var(--accent)">fine-grained PAT</a> with <b>read+write Contents</b> on your repo. The token is stored only in your browser's localStorage — never sent anywhere but GitHub.</p>
+    <p style="font-size:13.5px;color:var(--dim);line-height:1.6">Set once. Every time you add a custom ticker, the file is pushed to your repo automatically and the GitHub Actions workflow fetches it within ~2 minutes. Needs a <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">fine-grained PAT</a> with <b>read+write Contents</b> on your repo. The token is stored only in your browser's localStorage — never sent anywhere but GitHub.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <div><div class="kpiL">GitHub token (fine-grained PAT)</div>
         <input id="pfGhToken" type="password" placeholder="github_pat_..." value="${cfg.token||""}"
