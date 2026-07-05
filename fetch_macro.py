@@ -27,6 +27,21 @@ import json
 import yfinance as yf
 from datetime import datetime, timedelta
 
+def _write_status(key, count, error=None):
+    """Write this fetcher's result into status.json (shared across all fetchers)."""
+    import json, os
+    from datetime import datetime, timezone
+    sf = "status.json"
+    try:
+        s = json.load(open(sf)) if os.path.exists(sf) else {}
+    except Exception:
+        s = {}
+    s[key] = {"updatedAt": datetime.now(timezone.utc).isoformat(),
+               "status": "ok" if not error else "error",
+               "count": count, "error": error}
+    json.dump(s, open(sf, "w"), indent=2)
+
+
 SERIES = {
     "us10y":     {"ticker": "^TNX", "label": "US 10-Year Treasury Yield", "unit": "%", "scale": 1},
     "us3m":      {"ticker": "^IRX", "label": "US 3-Month Yield",          "unit": "%", "scale": 1},
@@ -108,5 +123,6 @@ def main():
     print("Re-run this daily/weekly to keep the dashboard's macro panel current.")
 
 
+# status written inside main() or by fetch_custom.py
 if __name__ == "__main__":
     main()

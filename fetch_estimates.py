@@ -27,6 +27,21 @@ import json
 import time
 import yfinance as yf
 
+def _write_status(key, count, error=None):
+    """Write this fetcher's result into status.json (shared across all fetchers)."""
+    import json, os
+    from datetime import datetime, timezone
+    sf = "status.json"
+    try:
+        s = json.load(open(sf)) if os.path.exists(sf) else {}
+    except Exception:
+        s = {}
+    s[key] = {"updatedAt": datetime.now(timezone.utc).isoformat(),
+               "status": "ok" if not error else "error",
+               "count": count, "error": error}
+    json.dump(s, open(sf, "w"), indent=2)
+
+
 SLEEP_SEC = 0.2
 TEST_TICKERS = ["AAPL", "MSFT", "NVDA"]
 
@@ -160,5 +175,6 @@ def main(use_test_list=False):
     print("The dashboard's Analyst Outlook panel will pick this up automatically.")
 
 
+# status written inside main() or by fetch_custom.py
 if __name__ == "__main__":
     main(use_test_list=False)  # full universe by default — test list starved the DCF growth merge of coverage

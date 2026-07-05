@@ -1,0 +1,39 @@
+name: Fetch custom tickers
+
+on:
+  push:
+    paths:
+      - custom_tickers.json   # triggers ONLY when this file changes
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-custom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30      # custom list is small; 30 min is generous
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install yfinance requests
+
+      - name: Fetch new custom tickers only
+        run: python fetch_custom.py
+
+      - name: Update status.json with fetch result
+        # fetch_custom.py writes status.json automatically
+        run: echo "status.json updated by fetcher"
+
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json status.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "custom: add $(python3 -c "import json; c=json.load(open('custom_tickers.json')); print(len(c.get('US',[])+c.get('IN',[])))") custom ticker(s) $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push

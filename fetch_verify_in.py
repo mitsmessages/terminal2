@@ -34,6 +34,21 @@ import time
 from datetime import datetime, timedelta
 import requests
 
+def _write_status(key, count, error=None):
+    """Write this fetcher's result into status.json (shared across all fetchers)."""
+    import json, os
+    from datetime import datetime, timezone
+    sf = "status.json"
+    try:
+        s = json.load(open(sf)) if os.path.exists(sf) else {}
+    except Exception:
+        s = {}
+    s[key] = {"updatedAt": datetime.now(timezone.utc).isoformat(),
+               "status": "ok" if not error else "error",
+               "count": count, "error": error}
+    json.dump(s, open(sf, "w"), indent=2)
+
+
 BROWSER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
@@ -197,5 +212,6 @@ def main(use_test_list=True):
     print("The dashboard's Data Integrity panel will pick this up automatically.")
 
 
+# status written inside main() or by fetch_custom.py
 if __name__ == "__main__":
     main(use_test_list=True)

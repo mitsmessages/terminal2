@@ -28,6 +28,21 @@ import json
 import time
 import requests
 
+def _write_status(key, count, error=None):
+    """Write this fetcher's result into status.json (shared across all fetchers)."""
+    import json, os
+    from datetime import datetime, timezone
+    sf = "status.json"
+    try:
+        s = json.load(open(sf)) if os.path.exists(sf) else {}
+    except Exception:
+        s = {}
+    s[key] = {"updatedAt": datetime.now(timezone.utc).isoformat(),
+               "status": "ok" if not error else "error",
+               "count": count, "error": error}
+    json.dump(s, open(sf, "w"), indent=2)
+
+
 USER_AGENT = "TerminalDashboard yourname@email.com"  # same requirement as fetch_edgar.py
 HEADERS = {"User-Agent": USER_AGENT, "Accept": "application/json"}
 SLEEP_SEC = 0.15
@@ -156,5 +171,6 @@ def main(use_test_list=True):
     print("The dashboard's Data Integrity panel will pick this up automatically.")
 
 
+# status written inside main() or by fetch_custom.py
 if __name__ == "__main__":
     main(use_test_list=True)

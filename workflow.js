@@ -49,6 +49,10 @@ const FUNNEL_DEFAULT = {
   stageResults:{},         // stageId -> {pass:[t], fail:[{t,n,reasons}], ranAt}
   tickets:[],              // re-entry tickets for rejected stocks
 };
+// Selection fingerprint: uniquely identifies which market/index/sector produced a result.
+// When it changes, stale results are flagged instead of silently displayed.
+function funnelFingerprint(f){ return [f.market||"",f.index||"",f.sector||"ALL"].join("|"); }
+
 function loadFunnel(){
   try { return Object.assign({}, FUNNEL_DEFAULT, JSON.parse(localStorage.getItem("terminal_funnel")||"{}")); }
   catch(e){ return Object.assign({}, FUNNEL_DEFAULT); }
@@ -522,18 +526,15 @@ function runFunnelStage(stageId){
     const failed = results.filter(x=>x.r.status==="fail");
     if(failed.length===0){ pass.push(s.t); }
     else {
-      fail.push({t:s.t, n:s.n, reasons:failed.map(x=>`${x.c.label}: ${x.r.reason}`)});
-      // one re-entry ticket per stock per stage (replace any old one)
-      State.funnel.tickets = State.funnel.tickets.filter(tk=>!(tk.t===s.t && tk.stage===stageId));
-      State.funnel.tickets.push({
-        t:s.t, n:s.n, stage:stageId, stageName:stage.name,
-        reasons:failed.map(x=>x.r.reason),
-        reentry:failed.map(x=>x.r.reentry).filter(Boolean),
-        created:new Date().toISOString().slice(0,10), met:false,
-      });
+      fail.push({t:s.t, n:s.n,
+        reasons:failed.map(x=>`${x.c.label}: ${x.r.reason}`),
+        reentry:failed.map(x=>x.r.reentry).filter(Boolean) });
+      // Fix 9: tickets are OPT-IN — no auto-creation.
+      // User clicks ☆ Watch on the roster row to save a stock for re-evaluation.
+      // Auto-ticketing every reject buries the user in noise.
     }
   });
-  State.funnel.stageResults[stageId] = {pass, fail, detail, total:prev.length, ranAt:new Date().toISOString()};
+  State.funnel.stageResults[stageId] = {pass, fail, detail, total:prev.length, ranAt:new Date().toISOString(), fingerprint:funnelFingerprint(State.funnel)};
   saveFunnel();
 }
 
@@ -685,29 +686,44 @@ function renderWorkflow(){
   let rosterHtml="";
   if(acked && res){
     const detail = res.detail||{};
-    const failRows = res.fail.map(fx=>`
-      <tr><td class="left"><span class="tname">${fx.t}</span><span class="tsub">${fx.n}</span></td>
+    const failRows = res.fail.map(fx=>{
+      const watched = (State.funnel.tickets||[]).some(tk=>tk.t===fx.t && tk.stage===st.id);
+      return `<tr><td class="left"><span class="tname">${fx.t}</span><span class="tsub">${fx.n}</span></td>
         <td><span class="pill warn">rejected</span></td>
-        <td class="left" style="font-size:13px;line-height:1.55;color:var(--dim)">${fx.reasons.join("<br>")}</td></tr>`).join("");
+        <td class="left" style="font-size:13px;line-height:1.55;color:var(--dim)">${fx.reasons.join("<br>")}</td>
+        <td><button data-wfwatch="${fx.t}:${st.id}" title="${watched?"Remove from watchlist":"Save to re-entry watchlist"}"
+          style="background:none;border:1px solid ${watched?"var(--accent)":"var(--line)"};border-radius:5px;cursor:pointer;padding:3px 8px;font-size:14px;color:${watched?"var(--accent)":"var(--dim)"}">${watched?"★":"☆"}</button></td></tr>`;
+    }).join("");
     const passRows = res.pass.map(t=>{
       const d=(detail[t]||[]);
       const naCount=d.filter(x=>x.status==="na").length;
       const warnCount=d.filter(x=>x.status==="warn").length;
+      const watched = (State.funnel.tickets||[]).some(tk=>tk.t===t && tk.stage===st.id);
       return `<tr><td class="left"><span class="tname">${t}</span></td>
         <td><span class="pill good">passed</span>${warnCount?` <span class="pill neutral" title="soft cautions — annotate, never reject">${warnCount} caution${warnCount>1?"s":""}</span>`:""}${naCount?` <span class="pill neutral" title="some checks not assessable">${naCount} unverified</span>`:""}</td>
-        <td class="left" style="font-size:13px;color:var(--dim)">${d.map(x=>`${x.status==="pass"?"✓":x.status==="na"?"◌":x.status==="warn"?"⚠":"✗"} ${x.label}`).join(" · ")}</td></tr>`;
+        <td class="left" style="font-size:13px;color:var(--dim)">${d.map(x=>`${x.status==="pass"?"✓":x.status==="na"?"◌":x.status==="warn"?"⚠":"✗"} ${x.label}`).join(" · ")}</td>
+        <td style="color:var(--dim);font-size:12px">—</td></tr>`;
     }).join("");
+    // Fix 7: stale-result banner when fingerprint doesn't match current selection
+    const currentFP = funnelFingerprint(f);
+    const resultFP = res.fingerprint||"";
+    const staleBanner = (resultFP && resultFP!==currentFP) ? `
+      <div style="padding:10px 14px;background:var(--warn-bg);border:1px solid var(--warn);border-radius:7px;margin-bottom:10px;font-size:13.5px">
+        ⚠ <b>Selection changed since this was run.</b> This result is from <code>${resultFP}</code> — your current selection is <code>${currentFP}</code>.
+        Re-run to get results for the new selection.
+      </div>` : "";
     rosterHtml = `<div class="panel wide" data-stageresult="1">
       <div class="panelhead"><span class="panelt">Result: ${res.pass.length} of ${res.total} pass Stage ${st.id}</span><span class="panels">every rejection shows its exact reason — that's the lesson</span></div>
+      ${staleBanner}
       <div style="overflow-x:auto"><table class="grid" style="width:100%">
-        <thead><tr><th class="left">Stock</th><th>Verdict</th><th class="left">Why</th></tr></thead>
+        <thead><tr><th class="left">Stock</th><th>Verdict</th><th class="left">Why</th><th title="Save to re-entry watchlist">Watch</th></tr></thead>
         <tbody>${failRows}${passRows}</tbody></table></div>
-      <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
-        ${wfBtn(`Continue to Stage ${st.id+1} with ${res.pass.length} survivors →`,`data-wfnext="1"`,true)}
-        ${wfBtn("Re-run this filter","data-wfrun='1'")}
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        ${!staleBanner?wfBtn(`Continue to Stage ${st.id+1} with ${res.pass.length} survivors →`,`data-wfnext="1"`,true):""}
+        ${wfBtn("Re-run this filter","data-wfrun='1'",!!staleBanner)}
         ${wfBtn("← Back","data-wfback='1'")}
       </div>
-      <p class="hint">Every rejected stock received a <b>re-entry ticket</b> below — the exact condition that would make it worth re-testing. A "no" here means "not until this changes", not "never".</p>
+      <p class="hint">Rejected stocks are not auto-saved. Click ☆ on any rejected stock to add it to your re-entry watchlist — the exact condition that would flip it to a buy, re-checked on every data refresh.</p>
     </div>`;
   } else if(acked){
     rosterHtml = `<div class="panel wide"><div class="panelhead"><span class="panelt">Ready</span></div>
@@ -729,7 +745,10 @@ function renderWfTickets(){
       <div style="padding:10px 14px;border:1px solid var(--good);border-radius:7px;margin-bottom:6px;background:var(--good-bg)">
         <b>${x.t}</b> — re-entry condition MET on ${x.metOn}. It was rejected at Stage ${x.stage} (${x.stageName}); the disqualifying condition no longer fails. <span data-wfretest="${x.t}" style="color:var(--accent);cursor:pointer;font-weight:600">Re-run funnel from Stage ${x.stage} →</span></div>`).join("")}</div>`:""}
     ${open.map(x=>`<div style="padding:10px 14px;border:1px solid var(--line);border-radius:7px;margin-bottom:6px">
-      <div><b>${x.t}</b> <span class="tsub">${x.n||""}</span> · rejected at Stage ${x.stage} (${x.stageName}) on ${x.created}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><b>${x.t}</b> <span class="tsub">${x.n||""}</span> · rejected at Stage ${x.stage} (${x.stageName}) on ${x.created}</div>
+        <button data-wfdismiss="${x.t}:${x.stage}" title="Remove from watchlist" style="background:none;border:none;cursor:pointer;color:var(--dim);font-size:16px;padding:0 4px">✕</button>
+      </div>
       <div style="font-size:13px;color:var(--warn);margin-top:3px">${x.reasons.join(" · ")}</div>
       <div style="font-size:13px;color:var(--dim);margin-top:3px"><b>Comes back when:</b> ${x.reentry.length?x.reentry.join(" "):"the failed condition above flips on a future data refresh (re-checked automatically every time you open this tab)."}</div>
     </div>`).join("")}
@@ -769,6 +788,33 @@ function wireWorkflow(root){
     const ans={};
     root.querySelectorAll(`[data-wf6q^="${t}:"]`).forEach(ta=>{ ans[ta.dataset.wf6q.split(":")[1]]=ta.value; });
     F.qualitative[t]=ans; saveFunnel(); render();
+  });
+  on("[data-wfwatch]", el=>{
+    const [ticker, stageId] = el.dataset.wfwatch.split(":");
+    const sid = +stageId;
+    const stage = FUNNEL_STAGES.find(st=>st.id===sid);
+    const existing = (F.tickets||[]).findIndex(tk=>tk.t===ticker && tk.stage===sid);
+    if(existing>=0){
+      // already watched — remove it
+      F.tickets.splice(existing, 1);
+    } else {
+      // add ticket with reasons from the stage result
+      if(!F.tickets) F.tickets=[];
+      const failEntry = F.stageResults[sid]?.fail?.find(f=>f.t===ticker);
+      F.tickets.push({
+        t:ticker, n:failEntry?.n||ticker, stage:sid, stageName:stage?.name||"",
+        reasons:failEntry?.reasons||[], reentry:failEntry?.reentry||[],
+        created:new Date().toISOString().slice(0,10), met:false,
+      });
+    }
+    saveFunnel(); render();
+    // scroll back to result panel
+    setTimeout(()=>{ const el2=document.querySelector('[data-stageresult]'); if(el2) el2.scrollIntoView({behavior:'smooth',block:'start'}); },60);
+  });
+  on("[data-wfdismiss]", el=>{
+    const [ticker, stageId] = el.dataset.wfdismiss.split(":");
+    F.tickets = (F.tickets||[]).filter(tk=>!(tk.t===ticker && tk.stage===+stageId));
+    saveFunnel(); render();
   });
   on("[data-wfretest]", el=>{ const tk=F.tickets.find(x=>x.t===el.dataset.wfretest&&x.met); if(tk){ F.stage=tk.stage; F.tickets=F.tickets.filter(x=>x!==tk); saveFunnel(); render(); window.scrollTo(0,0);} });
 }

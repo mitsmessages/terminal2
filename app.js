@@ -36,6 +36,9 @@ const State = {
   veteranOpen: null,
   veteranView: "sector",
   veteranMkt: "ALL",
+  funnel: null,   // lazy-loaded by renderWorkflow() from localStorage
+  portfolio: null, // lazy-loaded by renderPortfolio() from localStorage
+  returnTab: null,  // Fix 6: which tab opened the tearsheet — back button returns here
 };
 
 function saveWatchlist(){ localStorage.setItem("terminal_watchlist", JSON.stringify(State.watchlist)); }
@@ -64,6 +67,11 @@ let REACTIONS_DATA = [];
 fetch("reactions.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
   if(Array.isArray(d)) REACTIONS_DATA = d; render();
 }).catch(()=>{ /* fine — track record panel shows a setup message instead */ });
+
+let STATUS_DATA = {};
+fetch("status.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
+  STATUS_DATA = d; render();
+}).catch(()=>{ /* fine — strip hidden when no status */ });
 
 let ESTIMATES_DATA = {};
 fetch("estimates.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
@@ -190,6 +198,8 @@ function renderHeader(){
       <span class="brand" data-home style="cursor:pointer"><span class="dot">▮▮</span> TERMINAL</span>
       <div class="tabs">
         <button data-tab="stocks" class="${State.tab==='stocks'?'on':''}">Stocks</button>
+        <button data-tab="workflow" class="${State.tab==='workflow'?'on':''}">Workflow</button>
+        <button data-tab="portfolio" class="${State.tab==='portfolio'?'on':''}">Portfolio</button>
         <button data-tab="sectors" class="${State.tab==='sectors'?'on':''}">Sectors &amp; cycles</button>
         <button data-tab="compare" class="${State.tab==='compare'?'on':''}">Compare${State.compare.length?` (${State.compare.length})`:''}</button>
         <button data-tab="playbook" class="${State.tab==='playbook'?'on':''}">Playbook</button>
@@ -443,7 +453,7 @@ function renderTearsheet(t){
     </div>
     <div class="panel">
       <div class="panelhead"><span class="panelt">Efficiency &amp; risk</span></div>
-      ${renderKV([["FCF yield",s.fcfYield?s.fcfYield.toFixed(1)+"%":"—"],["Earnings yield",s.earnYield?s.earnYield.toFixed(1)+"%":"—"],["PEG ratio",s.peg?s.peg.toFixed(2):"—"],["Net debt/EBITDA",s.debtToEbitda?s.debtToEbitda.toFixed(1)+"×":(s.debt<0?"net cash":"—")],["Capex intensity",s.capexIntensity?s.capexIntensity.toFixed(1)+"%":"—"],["Rev growth Δ",s.revDecel!=null?sign(s.revDecel)+" pts":"—"]])}
+      ${renderKV([["FCF yield",s.fcfYield?s.fcfYield.toFixed(1)+"%":"—"],["Earnings yield",s.earnYield?s.earnYield.toFixed(1)+"%":"—"],["PEG ratio",s.peg?s.peg.toFixed(2)+(s.pegSource==="ni"?" (NI est.)":""):"—"],["Rule of 40",s.ruleOf40!=null?s.ruleOf40.toFixed(0)+(s.ruleOf40>=40?" ✓ passes":" ✗ fails"):"—"],["Net debt/EBITDA",s.debtToEbitda?s.debtToEbitda.toFixed(1)+"×":(s.debt<0?"net cash":"—")],["Capex intensity",s.capexIntensity?s.capexIntensity.toFixed(1)+"%":"—"],["Rev growth Δ",s.revDecel!=null?sign(s.revDecel)+" pts":s.revRecovery?"↑ recovering":"—"]])}
     </div>
   </div>
 
@@ -1761,11 +1771,41 @@ function renderVeteran(){
 
 function render(){
   const root = document.getElementById("root");
+  const dataHealthStrip = (() => {
+    const S = STATUS_DATA || {};
+    const keys = Object.keys(S).filter(k=>k!=="fetch_custom");
+    if(!keys.length) return "";
+    const items = keys.map(k=>{
+      const r = S[k];
+      const ok = r.status==="ok"||r.status==="partial";
+      const age = r.updatedAt ? (() => {
+        const mins = Math.round((Date.now()-new Date(r.updatedAt).getTime())/60000);
+        return mins<60 ? mins+"m ago" : Math.round(mins/60)+"h ago";
+      })() : "?";
+      const count = r.count!=null ? ` ${r.count}` : "";
+      return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px">
+        <span style="width:6px;height:6px;border-radius:50%;background:${ok?"var(--good)":"var(--warn)"}"></span>
+        <span style="color:var(--dim)">${k.replace("fetch_","")}</span><span style="color:${ok?"var(--good)":"var(--warn)"}">${age}${count}</span>
+      </span>`;
+    });
+    const latest = keys.map(k=>S[k].updatedAt).filter(Boolean).sort().pop();
+    const latestAge = latest ? (() => {
+      const mins = Math.round((Date.now()-new Date(latest).getTime())/60000);
+      return mins<60 ? mins+"m ago" : Math.round(mins/60)+"h ago";
+    })() : null;
+    const allOk = keys.every(k=>S[k].status==="ok"||S[k].status==="partial");
+    return `<div style="background:var(--panel);border-bottom:1px solid var(--line);padding:3px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:11px;font-weight:600;color:${allOk?"var(--good)":"var(--warn)"}">${allOk?"✓":"⚠"} Data</span>
+      ${latestAge?`<span style="font-size:11px;color:var(--dim)">last refresh ${latestAge}</span>`:""}
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${items.join("")}</div>
+    </div>`;
+  })();
   root.innerHTML = `
     ${renderHeader()}
+    ${dataHealthStrip}
     <div class="wrap">
       ${renderWatchDrawer()}
-      ${State.tab==="sectors" ? renderSectors() : State.tab==="compare" ? renderCompare() : State.tab==="playbook" ? renderPlaybook() : State.tab==="learn" ? renderLearn() : State.tab==="veteran" ? renderVeteran() : (State.sel ? renderTearsheet(State.sel) : renderScreener())}
+      ${State.tab==="portfolio" ? renderPortfolio() : State.tab==="workflow" ? renderWorkflow() : State.tab==="sectors" ? renderSectors() : State.tab==="compare" ? renderCompare() : State.tab==="playbook" ? renderPlaybook() : State.tab==="learn" ? renderLearn() : State.tab==="veteran" ? renderVeteran() : (State.sel ? renderTearsheet(State.sel) : renderScreener())}
     </div>
   `;
   wireEvents();
@@ -1775,6 +1815,8 @@ function wireEvents(){
   const root = document.getElementById("root");
 
   root.querySelectorAll("[data-tab]").forEach(el=>el.onclick=()=>{State.tab=el.dataset.tab;State.sel=null;render();});
+  if (typeof wireWorkflow === "function" && State.tab === "workflow") wireWorkflow(root);
+  if (typeof wirePortfolio === "function" && State.tab === "portfolio") wirePortfolio(root);
   const homeLink=root.querySelector("[data-home]");
   if(homeLink) homeLink.onclick=()=>{State.tab="stocks";State.sel=null;State.preset="all";State.mkt="ALL";State.capTier="ALL";State.q="";render();window.scrollTo(0,0);};
   const watchToggle=document.getElementById("watchToggle");
@@ -1819,7 +1861,7 @@ function wireEvents(){
     globalSearchBox.focus(); globalSearchBox.setSelectionRange(State.q.length,State.q.length);
   }
   root.querySelectorAll("[data-jumpto]").forEach(el=>el.onclick=()=>{
-    State.sel=el.dataset.jumpto; State.tab="stocks"; State.q=""; State.kpiExpanded=false; render();
+    State.returnTab=State.tab; State.sel=el.dataset.jumpto; State.tab="stocks"; State.q=""; State.kpiExpanded=false; render();
   });
 
   root.querySelectorAll("[data-earningmarker]").forEach(el=>el.onclick=(e)=>{
@@ -1832,10 +1874,10 @@ function wireEvents(){
     }
   });
 
-  root.querySelectorAll("[data-open]").forEach(el=>el.onclick=(e)=>{ if(e.target.closest('[data-star]')||e.target.closest('[data-cmp]'))return; State.sel=el.dataset.open;State.tab="stocks";State.kpiExpanded=false;render();});
-  root.querySelectorAll("[data-opensector]").forEach(el=>el.onclick=()=>{ if(el.dataset.opensector){State.sel=el.dataset.opensector;State.tab="stocks";render();}});
+  root.querySelectorAll("[data-open]").forEach(el=>el.onclick=(e)=>{ if(e.target.closest('[data-star]')||e.target.closest('[data-cmp]'))return; State.returnTab=State.tab; State.sel=el.dataset.open;State.tab="stocks";State.kpiExpanded=false;render();});
+  root.querySelectorAll("[data-opensector]").forEach(el=>el.onclick=()=>{ if(el.dataset.opensector){State.returnTab=State.tab; State.sel=el.dataset.opensector;State.tab="stocks";render();}});
   const backBtn=document.getElementById("backBtn");
-  if(backBtn) backBtn.onclick=()=>{State.sel=null;render();};
+  if(backBtn) backBtn.onclick=()=>{State.sel=null; const rt=State.returnTab; if(rt&&rt!=="stocks"){State.tab=rt; State.returnTab=null;} render(); window.scrollTo({top:0,behavior:"smooth"});};
 
   root.querySelectorAll("[data-star]").forEach(el=>el.onclick=(e)=>{e.stopPropagation();toggleWatch(el.dataset.star);});
   root.querySelectorAll("[data-cmp]").forEach(el=>el.onclick=(e)=>{e.stopPropagation();toggleCompare(el.dataset.cmp);});
