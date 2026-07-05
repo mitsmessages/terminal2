@@ -54,7 +54,9 @@ def _get(session, url, max_retries=3, backoff=2.0):
 # EDGAR requires a descriptive User-Agent with a real contact email.
 # SEC policy: https://www.sec.gov/os/accessing-edgar-data
 # Replace with your own email — do not use the placeholder below.
-USER_AGENT = "TerminalDashboard yourname@email.com"
+# Fix: Replace with your real email — SEC EDGAR policy requires a valid contact.
+# Using a placeholder will eventually trigger SEC bot detection.
+USER_AGENT = "TerminalEquityDashboard terminal@mitsanalytics.com"  # ← update to your real email
 
 MAX_QUARTERS = 10      # how many 8-K filings to fetch per company
 SLEEP_SEC    = 0.15    # SEC rate limit: max 10 req/sec; 0.15s = ~6/sec (safe)

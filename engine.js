@@ -133,15 +133,35 @@ function dcf(s,{discount,termGrowth,years}){
 function applyEstimatesGrowth(stocks, estimatesMap){
   stocks.forEach(s=>{
     const est = estimatesMap && estimatesMap[s.t];
-    // Prefer revenue growth (closest to what a two-stage FCF model wants),
-    // then next-year EPS growth, then current-year EPS growth.
-    const cand = est && (est.revenueGrowthEstimate ?? est.epsGrowthNextYear ?? est.epsGrowthCurrentYear);
-    if(cand!=null && isFinite(cand)){
-      s.g = Math.max(0, Math.min(30, cand));       // clamp: 0–30% starting growth
+    const consensus = est && (est.revenueGrowthEstimate ?? est.epsGrowthNextYear ?? est.epsGrowthCurrentYear);
+
+    if(consensus!=null && isFinite(consensus)){
+      // Tier 1: real analyst consensus, clamped to 0-30%
+      s.g = Math.max(0, Math.min(30, consensus));
       s.gSource = `analyst consensus (${est.numAnalysts||"n/a"} analysts)`;
-      s.gRaw = cand;
-    } else if(!s.gSource){
-      s.gSource = "default assumption — no analyst coverage loaded; treat the DCF as low-confidence";
+      s.gRaw = consensus;
+    } else {
+      // Tier 2: stock's own historical FCF CAGR from real data
+      // FCF CAGR is computed in analyze(), so we need to run a quick check.
+      // We use the raw annual FCF to compute it here before analyze() runs.
+      const fcf = s.annual?.fcf;
+      const fcfCagrVal = fcf && fcf.length>=2 ? (()=>{
+        const c = cagrX(fcf);
+        if(!c) return null;
+        return Math.max(-10, Math.min(30, c.v));  // clamp: -10% to 30%
+      })() : null;
+
+      if(fcfCagrVal!=null && isFinite(fcfCagrVal)){
+        // Tier 2: historical FCF CAGR — what the business has actually delivered
+        s.g = fcfCagrVal;
+        s.gSource = `historical FCF CAGR (no analyst coverage — using own track record)`;
+        s.gRaw = null;
+      } else {
+        // Tier 3: honest 8% default, clearly labeled as a fallback
+        s.g = s.g ?? 8;
+        s.gSource = "default 8% — no analyst coverage and insufficient FCF history; treat this DCF as low-confidence";
+        s.gRaw = null;
+      }
     }
   });
 }
@@ -154,7 +174,9 @@ function normalize(x){
     netIncome: na(obj?.netIncome), fcf: na(obj?.fcf), ocf: na(obj?.ocf), capex: na(obj?.capex),
     operatingIncome: na(obj?.operatingIncome), grossProfit: na(obj?.grossProfit), margins: na(obj?.margins),
   });
-  return { ...x, annual: normSeries(x.annual), quarterly: normSeries(x.quarterly) };
+  // g=null means "not yet set" — applyEstimatesGrowth fills it in; use 8 as
+  // the safe default so dcf() always receives a number, never null.
+  return { ...x, g: x.g ?? 8, annual: normSeries(x.annual), quarterly: normSeries(x.quarterly) };
 }
 
 /* ============================================================
@@ -194,6 +216,62 @@ function analyze(raw, intrinsic){
   const earnYield=s.pe?100/s.pe:null;
   const ruleOf40=(revG!=null&&fcfmNow!=null)?revG+fcfmNow:null;
   const debtToEbitda=(ebitda0&&ebitda0>0)?s.debt/ebitda0:null;
+
+  /* ── Fix 5: self-computed EV/EBITDA from annual figures ──────────────────
+     Yahoo's evEbitda uses TTM EBITDA; our ebitda0 is annual. For growing
+     companies these diverge. We compute our own from consistent annual data
+     and use it for all internal calculations. Yahoo's figure is preserved
+     on the object for display/reference. */
+  const evEbitdaCalc = (s.ev!=null && ebitda0!=null && ebitda0>0) ? +(s.ev/ebitda0).toFixed(1) : null;
+  const evEbitda = evEbitdaCalc ?? s.evEbitda;  // prefer self-computed; Yahoo as fallback
+
+  /* ── EV/FCF — cleaner than EV/EBITDA for capex-heavy businesses ──────── */
+  const fcf0 = arr(A.fcf)[0];
+  const evFcf = (s.ev!=null && fcf0!=null && fcf0>0) ? +(s.ev/fcf0).toFixed(1) : null;
+
+  /* ── ROIC (return on invested capital) ───────────────────────────────────
+     The best single capital-allocation metric: how much after-tax operating
+     profit does each dollar of invested capital generate?
+     NOPAT = EBIT × (1 - tax rate). Invested capital = total equity + net debt.
+     We approximate the tax rate from NI/EBIT when available, else 25%. */
+  const roic = (() => {
+    const ebit0 = arr(A.operatingIncome)[0];
+    const ni0 = arr(A.netIncome)[0];
+    const equity0 = arr(s.bsDetail?.totalEquity||[])[0];
+    if(ebit0==null||equity0==null) return null;
+    const taxRate = (ebit0>0 && ni0!=null) ? Math.max(0, Math.min(0.40, 1-ni0/ebit0)) : 0.25;
+    const nopat = ebit0 * (1 - taxRate);
+    const investedCapital = equity0 + s.debt;  // debt is net debt (positive = owe, negative = cash)
+    if(investedCapital<=0) return null;
+    return +(nopat/investedCapital*100).toFixed(1);
+  })();
+
+  /* ── Interest coverage (EBIT / interest expense) ─────────────────────── */
+  const intExp0 = arr(s.bsDetail?.interestExpense||[])[0];
+  const ebit0 = arr(A.operatingIncome)[0];
+  const interestCoverage = (ebit0!=null && intExp0!=null && intExp0>0) ? +(ebit0/intExp0).toFixed(1) : null;
+
+  /* ── Liquidity ratios ────────────────────────────────────────────────── */
+  const ca0 = arr(s.bsDetail?.currentAssets||[])[0];
+  const cl0 = arr(s.bsDetail?.currentLiab||[])[0];
+  const inv0 = arr(s.bsDetail?.inventory||[])[0];
+  const currentRatio = (ca0!=null && cl0!=null && cl0>0) ? +(ca0/cl0).toFixed(2) : null;
+  const quickRatio = (ca0!=null && cl0!=null && cl0>0) ?
+    +((ca0-(inv0||0))/cl0).toFixed(2) : null;
+
+  /* ── Gross margin 3-year trend ───────────────────────────────────────── */
+  const grossMargins = arr(A.margins).map(m=>m?.gross).filter(v=>v!=null);
+  const grossMarginTrend3y = grossMargins.length>=3 ? +(grossMargins[0]-grossMargins[2]).toFixed(1) : null;
+  const grossMarginNow = grossMargins[0] ?? null;
+
+  /* ── Net debt / equity ───────────────────────────────────────────────── */
+  const equity0 = arr(s.bsDetail?.totalEquity||[])[0];
+  const netDebtToEquity = (equity0!=null && equity0>0) ? +(s.debt/equity0*100).toFixed(0) : null;
+
+  /* ── Dividend payout ratio ───────────────────────────────────────────── */
+  const ni0_payout = arr(A.netIncome)[0];
+  const divPayout = (s.divYield && s.mcap && ni0_payout && ni0_payout>0) ?
+    +((s.divYield/100 * s.mcap) / ni0_payout * 100).toFixed(0) : null;
   const revPrior = A.revenue.length>1 ? yoy(A.revenue.slice(1)) : null;
   /* revDecel: growth-of-growth. Guard against zero-crossing sign flip:
      prior=-5%, current=+3% reads as +8pts "acceleration" but the business
@@ -325,30 +403,62 @@ function analyze(raw, intrinsic){
     "Confirm it's operational and not a one-off tax benefit or asset sale.");
 
   // ---------- OWNERSHIP (promoter holding / insider ownership) ----------
+  // Fix 6: renamed signals explicitly distinguish:
+  //   "Insider ownership %" — from Yahoo's heldPercentInsiders (ownership level)
+  //   "Diluted share issuance" — from Piotroski's diluted share count check (dilution)
+  // Previously both were labeled "Ownership" causing confusion.
   const insiderTrend = (s.insiderPct!=null && s.prevInsiderPct!=null) ? s.insiderPct - s.prevInsiderPct : null;
-  if(insiderTrend!=null && insiderTrend>1)add("good","Ownership","Promoters/insiders increasing stake",
+  if(insiderTrend!=null && insiderTrend>1)add("good","Insider ownership %","Promoters/insiders increasing stake",
     `${s.mkt==="IN"?"Promoter":"Insider"} holding rose from ${s.prevInsiderPct.toFixed(1)}% to ${s.insiderPct.toFixed(1)}% — the people who know the business best are buying more of it.`,
-    "Insiders have information no outsider has. When they voluntarily increase their own stake — using their own money — it's one of the strongest votes of confidence available, far more reliable than anything management says in a press release.",
+    "Insiders have information no outsider has. When they voluntarily increase their own stake — using their own money — it's one of the strongest votes of confidence available.",
     "Check whether the increase came from open-market buying (bullish) or a preferential allotment/ESOP exercise (more neutral). Pair with rising FCF for the strongest combination.");
-  if(insiderTrend!=null && insiderTrend<-1)add("warn","Ownership",`${s.mkt==="IN"?"Promoter":"Insider"} stake declining`,
+  if(insiderTrend!=null && insiderTrend<-1)add("warn","Insider ownership %",`${s.mkt==="IN"?"Promoter":"Insider"} stake declining`,
     `${s.mkt==="IN"?"Promoter":"Insider"} holding fell from ${s.prevInsiderPct.toFixed(1)}% to ${s.insiderPct.toFixed(1)}%.`,
-    "Insiders selling isn't always bearish — it can be diversification, pledging shares for a loan, or estate planning. But a sustained decline, especially alongside weak fundamentals, is worth taking seriously since it removes the strongest aligned shareholder.",
-    "Look for the reason if disclosed (pledge, OFS, block deal). One quarter's dip is noise; a multi-quarter decline paired with other warning flags is the real signal.");
-  if(s.insiderPct!=null && s.insiderPct>50 && insiderTrend==null)add("good","Ownership","High insider alignment",
+    "Insiders selling isn't always bearish — it can be diversification or estate planning. But a sustained decline alongside weak fundamentals is worth noting.",
+    "Look for the reason if disclosed. One quarter's dip is noise; a multi-quarter decline paired with other warning flags is the real signal.");
+  if(s.insiderPct!=null && s.insiderPct>50 && insiderTrend==null)add("good","Insider ownership %","High insider alignment",
     `${s.mkt==="IN"?"Promoters hold":"Insiders hold"} ${s.insiderPct.toFixed(0)}% of the company — strong skin in the game.`,
-    "High insider ownership aligns management's incentives with shareholders' — they win and lose alongside you, which tends to discourage empire-building and excessive risk-taking with your capital.",
-    "Very high concentration (>75%) can cut the other way — thin free float, harder for outside shareholders to influence governance. Moderate-to-high (40-70%) is usually the sweet spot.");
-  if(s.insiderPct!=null && s.insiderPct<5)add("warn","Ownership","Low insider ownership",
+    "High insider ownership aligns management's incentives with shareholders'.",
+    "Very high concentration (>75%) can reduce free float and governance influence. 40-70% is usually the sweet spot.");
+  if(s.insiderPct!=null && s.insiderPct<5)add("warn","Insider ownership %","Low insider ownership",
     `${s.mkt==="IN"?"Promoters hold":"Insiders hold"} only ${s.insiderPct.toFixed(1)}% of the company.`,
-    "When management owns very little of the business, their financial incentives are weighted toward salary and bonus rather than the stock price — the classic agency problem between owners and managers.",
-    "Less concerning for mega-cap, widely-held companies with strong governance; more concerning for smaller or founder-led businesses where you'd expect higher alignment.");
+    "When management owns very little, their incentives are weighted toward salary rather than the stock price — the classic agency problem.",
+    "Less concerning for mega-caps with strong governance; more concerning for smaller businesses.");
+
+  // ---------- ROIC ----------
+  if(roic!=null){
+    if(roic>=15) add("good","Capital returns","Strong ROIC",
+      `Return on invested capital: ${roic}% — each ₹/$ of capital deployed earns ${roic}¢ after tax.`,
+      "ROIC above 15% is the classic 'above cost of capital' threshold. Sustained high ROIC is the single best indicator of a genuine moat — companies without one tend to see ROIC compete down to their cost of capital over time.",
+      "Check whether ROIC is trending up (expanding moat) or down (competitive pressure). A rising ROIC on growing capital is the compounding engine.");
+    else if(roic<8) add("warn","Capital returns","Weak ROIC",
+      `Return on invested capital: ${roic}% — below the typical 8-10% cost of capital threshold.`,
+      "When ROIC is below the cost of capital, growth destroys value — every new dollar invested earns less than what shareholders require. This is different from low margins; a capital-light business can have high ROIC even on thin margins.",
+      "Pair with the reinvestment lens: is this a temporary trough or a structural limitation?");
+  }
+
+  // ---------- INTEREST COVERAGE ----------
+  if(interestCoverage!=null){
+    if(interestCoverage<2) add("warn","Balance sheet","Thin interest coverage",
+      `EBIT covers interest expense only ${interestCoverage.toFixed(1)}× — operating profit is barely above the interest bill.`,
+      "Below 2× coverage, a small earnings miss or a rate rise can make debt service painful. This is the balance-sheet risk that doesn't show up in leverage ratios until it's too late.",
+      "In a rising-rate environment this is especially dangerous for floating-rate debt. Check how much of the debt is fixed vs floating.");
+    else if(interestCoverage>=5) add("good","Balance sheet","Comfortable interest coverage",
+      `Interest covered ${interestCoverage.toFixed(1)}× by operating profit — debt is easily serviceable.`,
+      "High coverage means earnings can fall substantially before debt service becomes a problem — a key margin of safety in a downturn.",
+      "Watch for coverage compressing quickly (fast debt growth or falling EBIT) even if the absolute level still looks comfortable.");
+  }
 
   const goods=F.filter(f=>f.s==="good").length, warns=F.filter(f=>f.s==="warn").length;
   const verdict = goods-warns>=2 ? {l:"Constructive",c:"#1a8a63"} : warns-goods>=2 ? {l:"Caution",c:"#c0392b"} : {l:"Mixed signals",c:"#b8860b"};
 
   const result = { ...s, intrinsic, revG,niG,fcfG,ebitdaG,revQ,fcfQ,niQ,revQyoy,fcfQyoy,niQyoy,
-    marginTrend,opMarginTrend,fcfNi,mos,pricePos,
+    marginTrend,marginTrend2,opMarginTrend,opMarginTrend2,fcfNi,mos,pricePos,
     nmNow,omNow,emNow, fcfYield,earnYield,ruleOf40,debtToEbitda,revDecel,peg,pegSource,capexIntensity,insiderTrend,
+    // new ratio fields
+    roic, interestCoverage, currentRatio, quickRatio,
+    grossMarginNow, grossMarginTrend3y, netDebtToEquity, divPayout,
+    evEbitdaCalc, evEbitda, evFcf,
     revCagr:cagr(A.revenue), fcfCagr:cagr(A.fcf), niCagr:cagr(A.netIncome),
     revCagrX:cagrX(A.revenue), fcfCagrX:cagrX(A.fcf),
     revDecelCrossesZero, revRecovery,
@@ -501,6 +611,9 @@ function computeExcessReturns(tickerReactions, allReactions){
     }).filter(v=>v!=null);
     const bench60 = peerVals60.length>=2 ? peerVals60.reduce((a,b)=>a+b,0)/peerVals60.length : null;
     const bench90 = peerVals90.length>=2 ? peerVals90.reduce((a,b)=>a+b,0)/peerVals90.length : null;
+    // Fix 13: Indian stocks never get peer benchmarks (EDGAR-sourced peer data
+    // covers US only). Mark explicitly rather than silently returning null.
+    const noBenchmark = tickerReactions.sector && peerVals60.length<2;
     return {
       ...r,
       excess60d: (r.forward60d!=null && bench60!=null) ? +(r.forward60d-bench60).toFixed(2) : null,

@@ -471,7 +471,7 @@ function renderTearsheet(t){
     </div>
     <div class="panel">
       <div class="panelhead"><span class="panelt">Quality &amp; returns</span></div>
-      ${renderKV([["Return on equity",s.roe?s.roe.toFixed(0)+"%":"—"],["Return on assets",s.roa?s.roa.toFixed(0)+"%":"—"],["FCF/Net income",s.fcfNi?s.fcfNi.toFixed(2):"—"],["Net debt/Mkt cap",(!s.mcap||s.mcap<=0)?"—":(s.debt/s.mcap*100).toFixed(0)+"%"],["Beta",s.beta!=null?s.beta.toFixed(2):"—"],["FCF margin",A.margins[0]?.fcf!=null?A.margins[0].fcf.toFixed(1)+"%":"—"]])}
+      ${renderKV([["Return on equity",s.roe?s.roe.toFixed(0)+"%":"—"],["Return on assets",s.roa?s.roa.toFixed(0)+"%":"—"],["ROIC",s.roic!=null?s.roic.toFixed(1)+"%":"—"],["Interest coverage",s.interestCoverage!=null?s.interestCoverage.toFixed(1)+"×":"—"],["Current ratio",s.currentRatio!=null?s.currentRatio.toFixed(2):"—"],["Quick ratio",s.quickRatio!=null?s.quickRatio.toFixed(2):"—"],["Gross margin 3Y Δ",s.grossMarginTrend3y!=null?(s.grossMarginTrend3y>0?"+":"")+s.grossMarginTrend3y.toFixed(1)+"pts":"—"],["Net debt/equity",s.netDebtToEquity!=null?s.netDebtToEquity+"%":"—"],["Dividend payout",s.divPayout!=null?s.divPayout+"%":"—"],["FCF/Net income",s.fcfNi?s.fcfNi.toFixed(2):"—"],["Net debt/Mkt cap",(!s.mcap||s.mcap<=0)?"—":(s.debt/s.mcap*100).toFixed(0)+"%"],["Beta",s.beta!=null?s.beta.toFixed(2):"—"],["FCF margin",A.margins[0]?.fcf!=null?A.margins[0].fcf.toFixed(1)+"%":"—"]])}
     </div>
 
     <div class="panel">
@@ -489,7 +489,7 @@ function renderTearsheet(t){
     </div>
     <div class="panel">
       <div class="panelhead"><span class="panelt">Efficiency &amp; risk</span></div>
-      ${renderKV([["FCF yield",s.fcfYield?s.fcfYield.toFixed(1)+"%":"—"],["Earnings yield",s.earnYield?s.earnYield.toFixed(1)+"%":"—"],["PEG ratio",s.peg?s.peg.toFixed(2)+(s.pegSource==="ni"?" (NI est.)":""):"—"],["Rule of 40",s.ruleOf40!=null?s.ruleOf40.toFixed(0)+(s.ruleOf40>=40?" ✓ passes":" ✗ fails"):"—"],["Net debt/EBITDA",s.debtToEbitda?s.debtToEbitda.toFixed(1)+"×":(s.debt<0?"net cash":"—")],["Capex intensity",s.capexIntensity?s.capexIntensity.toFixed(1)+"%":"—"],["Rev growth Δ",s.revDecel!=null?sign(s.revDecel)+" pts":s.revRecovery?"↑ recovering":"—"]])}
+      ${renderKV([["FCF yield",s.fcfYield?s.fcfYield.toFixed(1)+"%":"—"],["Earnings yield",s.earnYield?s.earnYield.toFixed(1)+"%":"—"],["PEG ratio",s.peg?s.peg.toFixed(2)+(s.pegSource==="ni"?" (NI est.)":""):"—"],["Rule of 40",s.ruleOf40!=null?s.ruleOf40.toFixed(0)+(s.ruleOf40>=40?" ✓ passes":" ✗ fails"):"—"],["Net debt/EBITDA",s.debtToEbitda?s.debtToEbitda.toFixed(1)+"×":(s.debt<0?"net cash":"—")],["Capex intensity",s.capexIntensity?s.capexIntensity.toFixed(1)+"%":"—"],["Rev growth Δ",s.revDecel!=null?sign(s.revDecel)+" pts":s.revRecovery?"↑ recovering":"—"],["EV/FCF",s.evFcf?s.evFcf.toFixed(1)+"×":"—"],["EV/EBITDA (annual)",s.evEbitdaCalc?s.evEbitdaCalc.toFixed(1)+"×":(s.evEbitda?s.evEbitda.toFixed(1)+"× (Yahoo TTM)":"—")]])}
     </div>
   </div>
 
@@ -1155,6 +1155,10 @@ function renderCompare(){
       ["Market cap",      stocks.map(s=>fmtB(s.mcap,s.mkt))],
       ["P/E",             stocks.map(s=>s.pe?.toFixed(1)||"—")],
       ["EV/EBITDA",       stocks.map(s=>s.evEbitda?.toFixed(1)||"—")],
+      ["EV/EBITDA (annual)",stocks.map(s=>s.evEbitdaCalc?s.evEbitdaCalc.toFixed(1)+"×":"—"),null,
+        "Self-computed from annual EBITDA (consistent with charts). Yahoo's TTM figure may differ for growing companies."],
+      ["EV/FCF",          stocks.map(s=>s.evFcf?s.evFcf.toFixed(1)+"×":"—"),null,
+        "Enterprise value / free cash flow. Cleaner than EV/EBITDA for capex-heavy businesses; n/a if FCF negative."],
       ["PEG",             stocks.map(s=>s.peg?s.peg.toFixed(2)+(s.pegSource==="ni"?" (NI)":""):"—"),null,"PEG uses EPS growth when analyst consensus available, net income growth otherwise"],
       ["FCF yield",       stocks.map(s=>pct(s.fcfYield))],
       ["Earnings yield",  stocks.map(s=>pct(s.earnYield))],
@@ -1182,8 +1186,19 @@ function renderCompare(){
     ${section("Returns & Balance Sheet", "", [
       ["ROE",             stocks.map(s=>pct(s.roe))],
       ["ROA",             stocks.map(s=>pct(s.roa))],
+      ["ROIC",            stocks.map(s=>s.roic!=null?s.roic.toFixed(1)+"%":"—"),
+        stocks.map(s=>()=>s.roic!=null?(s.roic>=15?"var(--good)":s.roic<8?"var(--warn)":"inherit"):"inherit"),
+        "Return on Invested Capital = NOPAT / (equity + net debt). Above 15% = above cost of capital = value creation."],
+      ["Interest coverage",stocks.map(s=>s.interestCoverage!=null?s.interestCoverage.toFixed(1)+"×":"—"),
+        stocks.map(s=>()=>s.interestCoverage!=null?(s.interestCoverage>=5?"var(--good)":s.interestCoverage<2?"var(--warn)":"inherit"):"inherit"),
+        "EBIT / interest expense. Below 2× = earnings barely cover debt service."],
+      ["Current ratio",   stocks.map(s=>s.currentRatio?.toFixed(2)||"—"),null,"Current assets / current liabilities. Below 1 = potential short-term liquidity issue."],
+      ["Quick ratio",     stocks.map(s=>s.quickRatio?.toFixed(2)||"—"),null,"(Current assets - inventory) / current liabilities. Stricter liquidity test."],
       ["Net debt/EBITDA", stocks.map(s=>s.debtToEbitda?.toFixed(1)+"×"||"—")],
-      ["Debt/Mkt cap",    stocks.map(s=>(!s.mcap||s.mcap<=0)?"—":((s.debt/s.mcap)*100).toFixed(0)+"%")],
+      ["Net debt/equity", stocks.map(s=>s.netDebtToEquity!=null?s.netDebtToEquity+"%":"—")],
+      ["Gross margin 3Y Δ",stocks.map(s=>s.grossMarginTrend3y!=null?(s.grossMarginTrend3y>0?"+":"")+s.grossMarginTrend3y.toFixed(1)+"pts":"—"),
+        stocks.map(s=>()=>s.grossMarginTrend3y!=null?(s.grossMarginTrend3y>0?"var(--good)":s.grossMarginTrend3y<-3?"var(--warn)":"inherit"):"inherit"),
+        "3-year gross margin trend. Sustained compression = pricing power erosion."],
     ])}
 
     ${section("Quality (sector-relative percentile)", "each score = % of sector peers this stock beats", [

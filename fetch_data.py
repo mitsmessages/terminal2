@@ -42,7 +42,7 @@ US = [
     "AMP","AME","AMGN","APH","ADI","ANSS","AON","APA","APO","AAPL",
     "AMAT","APTV","ACGL","ADM","ANET","AJG","AIZ","T","ATO","ADSK",
     "ADP","AZO","AVB","AVY","AXON","BKR","BALL","BAC","BAX","BDX",
-    "BRK.B","BBY","TECH","BIIB","BLK","BX","BK","BA","BKNG","BWA",
+    "BRK-B","BBY","TECH","BIIB","BLK","BX","BK","BA","BKNG","BWA",
     "BSX","BMY","AVGO","BR","BRO","BF.B","BLDR","BG","BXP","CHRW",
     "CDNS","CZR","CPT","CPB","COF","CAH","KMX","CCL","CARR","CTLT",
     "CAT","CBOE","CBRE","CDW","CE","COR","CNC","CNP","CF","CRL",
@@ -90,7 +90,7 @@ US = [
 ]
 IN = [
     "RELIANCE","TCS","HDFCBANK","ICICIBANK","BHARTIARTL","SBIN","INFY","LICI","ITC","HINDUNILVR",
-    "LT","BAJFINANCE","HCLTECH","MARUTI","SUNPHARMA","KOTAKBANK","M&M","ULTRACEMCO","AXISBANK","NTPC",
+    "LT","BAJFINANCE","HCLTECH","MARUTI","SUNPHARMA","KOTAKBANK","M-M","ULTRACEMCO","AXISBANK","NTPC",
     "ONGC","TITAN","ADANIENT","ADANIPORTS","BAJAJFINSV","ASIANPAINT","COALINDIA","WIPRO","JSWSTEEL","POWERGRID",
     "NESTLEIND","BEL","TATAMOTORS","IOC","TATASTEEL","HAL","DLF","TRENT","GRASIM","SBILIFE",
     "TECHM","ADANIPOWER","HDFCLIFE","JIOFIN","VEDL","BAJAJ-AUTO","CIPLA","HINDALCO","EICHERMOT","PIDILITIND",
@@ -191,7 +191,11 @@ def block(fin, cf):
     if not fcf and ocf and capex:
         fcf = [(o + c) if (o is not None and c is not None) else None
                for o, c in zip(ocf, capex)]
-    return rev, gp, oi, ebitda, ni, ocf, capex, fcf
+    # NEW: interest expense and total equity for ROIC and interest coverage
+    interest = row(fin, "Interest Expense", "Interest Expense Non Operating")
+    # Interest expense in Yahoo is usually negative (cash outflow) — normalise to positive
+    if interest: interest = [abs(v) if v is not None else None for v in interest]
+    return rev, gp, oi, ebitda, ni, ocf, capex, fcf, interest
 
 
 def _div_yield(info, price):
@@ -236,8 +240,8 @@ def pull(sym, mkt):
     fin, cf, bs = tk.financials, tk.cashflow, tk.balance_sheet
     qfin, qcf = tk.quarterly_financials, tk.quarterly_cashflow
 
-    arev, agp, aoi, aebitda, ani, aocf, acapex, afcf = block(fin, cf)
-    qrev, qgp, qoi, qebitda, qni, qocf, qcapex, qfcf = block(qfin, qcf)
+    arev, agp, aoi, aebitda, ani, aocf, acapex, afcf, aint_exp = block(fin, cf)
+    qrev, qgp, qoi, qebitda, qni, qocf, qcapex, qfcf, _ = block(qfin, qcf)
 
     debt = row(bs, "Total Debt")
     cash = row(bs, "Cash And Cash Equivalents",
@@ -271,6 +275,10 @@ def pull(sym, mkt):
     sga             = row(fin, "Selling General And Administration", "SG&A Expense")
     depr            = row(cf, "Depreciation And Amortization", "Depreciation")
     diluted_shares  = row(fin, "Diluted Average Shares")
+    # NEW: for ROIC, interest coverage, current/quick ratios
+    total_equity    = row(bs, "Stockholders Equity", "Total Equity Gross Minority Interest",
+                          "Common Stock Equity")
+    inventory       = row(bs, "Inventory")  # needed for quick ratio
 
     return {
         "t": sym, "n": info.get("shortName") or sym, "mkt": mkt,
@@ -280,14 +288,19 @@ def pull(sym, mkt):
         "mcap": round(scaled([mcap], mkt)[0], 2),
         "ev": round(scaled([ev], mkt)[0], 2),
         "debt": round(scaled([net_debt], mkt)[0], 2),
-        "g": G_OVERRIDE.get(sym, DEFAULT_G),
+        # Fix 1+2: g now set to None so engine.js applies the 3-tier fallback:
+        # (1) analyst consensus from estimates.json, (2) historical FCF CAGR,
+        # (3) 8% labeled "default — no coverage". Dropping the hardcoded
+        # G_OVERRIDE (e.g. NVDA=25%) which were revenue estimates applied to
+        # FCF projections — semantically wrong and arbitrary for 490 stocks.
+        "g": None,
         "pe": info.get("trailingPE"), "fpe": info.get("forwardPE"),
         "pb": info.get("priceToBook"), "ps": info.get("priceToSalesTrailing12Months"),
-        "evEbitda": info.get("enterpriseToEbitda"),
-        # B7 fix: yfinance changed dividendYield semantics across versions
-        # (fraction 0.005 vs percent 0.5). Computing it ourselves from
-        # dividendRate / price is version-proof; the raw field is only a
-        # fallback, normalized if it's obviously a fraction.
+        # Fix 5: store Yahoo's TTM EV/EBITDA separately from our annual calc.
+        # Internal calcs use the self-computed annual figure; Yahoo's is shown
+        # for reference only. Both are now visible in the tearsheet.
+        "evEbitdaYahoo": info.get("enterpriseToEbitda"),
+        "evEbitda": info.get("enterpriseToEbitda"),  # kept for back-compat; engine.js prefers self-computed
         "divYield": _div_yield(info, price),
         "roe": round((info.get("returnOnEquity") or 0) * 100, 2) if info.get("returnOnEquity") else None,
         "roa": round((info.get("returnOnAssets") or 0) * 100, 2) if info.get("returnOnAssets") else None,
@@ -295,10 +308,6 @@ def pull(sym, mkt):
         "high52": info.get("fiftyTwoWeekHigh"), "low52": info.get("fiftyTwoWeekLow"),
         "insiderPct": round((info.get("heldPercentInsiders") or 0) * 100, 2) if info.get("heldPercentInsiders") else None,
         "prevInsiderPct": None,
-        # Balance-sheet detail, multi-year (index 0 = most recent), unscaled
-        # to raw currency units -- forensic formulas below use ratios so
-        # absolute scale cancels out; keeping raw avoids compounding
-        # rounding error across three multi-factor scores.
         "bsDetail": {
             "totalAssets": scaled(total_assets, mkt), "totalLiab": scaled(total_liab, mkt),
             "currentAssets": scaled(current_assets, mkt), "currentLiab": scaled(current_liab, mkt),
@@ -306,7 +315,11 @@ def pull(sym, mkt):
             "receivables": scaled(receivables, mkt), "ppeNet": scaled(ppe_net, mkt),
             "goodwillIntangibles": scaled(goodwill_intang, mkt), "cogs": scaled(cogs, mkt),
             "sga": scaled(sga, mkt), "depreciation": scaled(depr, mkt),
-            "dilutedShares": diluted_shares,  # count, not currency -- left unscaled (only used for YoY change check)
+            "dilutedShares": diluted_shares,
+            # NEW fields for ROIC, interest coverage, liquidity ratios
+            "totalEquity": scaled(total_equity, mkt),
+            "inventory": scaled(inventory, mkt),
+            "interestExpense": scaled(aint_exp, mkt),
         },
         "annual": {
             "periods": periods(fin),
