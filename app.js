@@ -51,7 +51,7 @@ function toggleCompare(t){
   const i=State.compare.indexOf(t);
   if(i>=0){ State.compare.splice(i,1); }
   else { if(State.compare.length>=5){ alert("You can compare up to 5 stocks at a time. Remove one first."); return; } State.compare.push(t); }
-  render();
+  if(typeof saveAndSync==="function") saveAndSync(); else render();
 }
 
 fetch("data.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
@@ -1002,81 +1002,252 @@ function renderCompare(){
     return `
     <div class="secintro">
       <h2>Compare stocks</h2>
-      <p>Pick up to 5 stocks to line up side by side across valuation, growth, cash quality, and balance-sheet metrics. Click the <b>+</b> icon next to any stock in the Stocks tab, or "+ Add to compare" on a tearsheet.</p>
+      <p>Pick up to 5 stocks to compare side-by-side across valuation, quality, forensics, and every funnel condition. Click <b>+</b> on any stock in the Stocks tab, or search below.</p>
     </div>
-    <div class="panel" style="text-align:center;padding:50px 20px;color:var(--dim)">No stocks selected yet. Go to the Stocks tab and click + on a few names.</div>`;
+    <div class="panel wide" style="padding:20px">
+      <div class="kpiL" style="margin-bottom:8px">Search and add stocks to compare</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="cmpSearch" placeholder="Type ticker e.g. BPCL, IOC, AAPL…" style="width:220px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font-size:13px"/>
+        <button data-cmpadd style="padding:8px 16px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:600;cursor:pointer">Add</button>
+      </div>
+    </div>
+    <div class="panel" style="text-align:center;padding:40px 20px;color:var(--dim)">No stocks selected. Add from the Stocks tab (+) or search above.</div>`;
   }
+
   const rows = computeRows();
   const stocks = State.compare.map(t=>rows.find(r=>r.t===t)).filter(Boolean);
-  const colW = `${Math.floor(100/(stocks.length+1))}%`;
+  if(!stocks.length) return `<div class="panel"><p class="hint">Selected stocks not found in loaded data.</p></div>`;
 
-  const metricRows = [
-    ["Price", s=>fmtP(s.price,s.mkt)],
-    ["Market cap", s=>fmtB(s.mcap,s.mkt)],
-    ["DCF intrinsic value", s=>fmtP(s.intrinsic,s.mkt)],
-    ["DCF gap", s=>sign(s.mos), s=>clr(s.mos)],
-    ["P/E", s=>s.pe==null?"—":s.pe.toFixed(1)],
-    ["EV/EBITDA", s=>s.evEbitda==null?"—":s.evEbitda.toFixed(1)],
-    ["PEG", s=>s.peg==null?"—":s.peg.toFixed(2)],
-    ["Revenue YoY", s=>sign(s.revG), s=>clr(s.revG)],
-    ["Revenue CAGR 3y", s=>sign(s.revCagr), s=>clr(s.revCagr)],
-    ["FCF YoY", s=>sign(s.fcfG), s=>clr(s.fcfG)],
-    ["FCF CAGR 3y", s=>sign(s.fcfCagr), s=>clr(s.fcfCagr)],
-    ["Net margin", s=>s.nmNow==null?"—":s.nmNow.toFixed(1)+"%"],
-    ["EBITDA margin", s=>s.emNow==null?"—":s.emNow.toFixed(1)+"%"],
-    ["FCF / Net income", s=>s.fcfNi==null?"—":s.fcfNi.toFixed(2), s=>s.fcfNi>=1?"var(--good)":s.fcfNi<0.8?"var(--warn)":"#444"],
-    ["FCF yield", s=>s.fcfYield==null?"—":s.fcfYield.toFixed(1)+"%"],
-    ["ROE", s=>s.roe==null?"—":s.roe.toFixed(0)+"%"],
-    ["ROA", s=>s.roa==null?"—":s.roa.toFixed(0)+"%"],
-    ["Net debt / EBITDA", s=>s.debtToEbitda==null?(s.debt<0?"net cash":"—"):s.debtToEbitda.toFixed(1)+"×"],
-    ["Net debt / Mkt cap", s=>(s.debt/s.mcap*100).toFixed(0)+"%"],
-    ["Quality score", s=>s.healthScore, s=>s.healthScore>66?"var(--good)":s.healthScore>40?"var(--neutral)":"var(--warn)"],
-    ["Signal", s=>s.verdict.l, s=>s.verdict.c],
-  ];
+  const colW = `${Math.floor(85/(stocks.length))}%`;
+  const ctx = {rows};
 
-  // best-in-row highlighting for the numeric ones (higher = better, except PEG/PE/debt where lower = better)
-  const lowerBetter = new Set(["P/E","EV/EBITDA","PEG","Net debt / EBITDA","Net debt / Mkt cap"]);
+  /* ── helpers ── */
+  const best = (vals, lowerBetter) => {
+    const nums = vals.map(v=>parseFloat(v)).filter(n=>!isNaN(n));
+    if(!nums.length) return null;
+    return lowerBetter ? Math.min(...nums) : Math.max(...nums);
+  };
+  const cellStyle = (val, bestVal, lowerBetter, colorFn) => {
+    if(colorFn) return `color:${colorFn(val)}`;
+    const n = parseFloat(val);
+    if(isNaN(n)||bestVal===null) return "";
+    const isBest = lowerBetter ? n===bestVal : n===bestVal;
+    return isBest ? "color:var(--good);font-weight:800" : "";
+  };
+
+  /* ── section renderer ── */
+  const section = (title, subtitle, metricRows) => {
+    const lowerSet = new Set(["P/E","EV/EBITDA","PEG","Net debt/EBITDA","Debt/Mkt cap","Beneish M","Altman Z"]);
+    return `
+      <tr><td colspan="${stocks.length+1}" style="padding:10px 0 4px;font-size:12px;font-weight:700;letter-spacing:1px;color:var(--dim);text-transform:uppercase;border-bottom:2px solid var(--line)">${title}${subtitle?`<span style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px">${subtitle}</span>`:""}</td></tr>
+      ${metricRows.map(([label, vals, colorFns, note])=>{
+        const lb = lowerSet.has(label);
+        const bestVal = best(vals.map(v=>typeof v==="string"?v.replace(/[%×₹$,]/g,""):v), lb);
+        return `<tr>
+          <td class="left" style="color:var(--dim);font-size:12.5px;padding:5px 0">${label}${note?`<span title="${note}" style="color:var(--dim);cursor:help;margin-left:4px">ⓘ</span>`:""}
+          </td>
+          ${vals.map((v,i)=>{
+            const display = v==null||v===""?"—":v;
+            const style = cellStyle(display, bestVal, lb, colorFns?.[i]);
+            return `<td class="left" style="font-weight:600;font-size:13px;${style}">${display}</td>`;
+          }).join("")}
+        </tr>`;
+      }).join("")}`;
+  };
+
+  /* ── compute all values ── */
+  const f = s => val => val==null ? "—" : val;
+  const pct = v => v==null?"—":v.toFixed(1)+"%";
+  const x = v => v==null?"—":v.toFixed(1)+"×";
+  const num = v => v==null?"—":v.toFixed(1);
+
+  // Forensic scores
+  const forensics = stocks.map(s=>forensicScores(s));
+  const veteran = stocks.map(s=>veteranMetrics(s));
+  const rq = stocks.map(s=>sectorRelativeQuality(s, rows));
+
+  // Funnel conditions (all 5 stages)
+  const funnelAudit = stocks.map(s=>{
+    const stageResults = {};
+    FUNNEL_STAGES.filter(st=>st.id>=1&&st.id<=5&&st.conditions).forEach(st=>{
+      stageResults[st.id] = st.conditions.map(c=>{
+        let r; try { r=c.test(s,ctx); } catch(e){ r={status:"na",reason:"err"}; }
+        return {id:c.id, label:c.label.replace(/^(HARD|SOFT) — /,"").slice(0,40), status:r.status};
+      });
+    });
+    return stageResults;
+  });
+
+  const stageIcon = status => status==="pass"?"✓":status==="warn"?"⚠":status==="na"?"◌":"✗";
+  const stageColor = status => status==="pass"?"var(--good)":status==="warn"?"#b8860b":status==="na"?"var(--dim)":"var(--warn)";
 
   return `
-  <div class="secintro">
-    <h2>Compare stocks</h2>
-    <p>${stocks.length} of 5 selected. Click × to remove, or go to Stocks/tearsheets to add more.</p>
+  <div class="secintro" style="margin-bottom:10px">
+    <h2>Compare</h2>
+    <p>${stocks.length} stocks · click a metric to understand it · green = best in this comparison</p>
   </div>
-  <div class="presets" style="margin-bottom:18px">
-    ${stocks.map(s=>`<button class="preset on" data-cmp="${s.t}">${s.t} <span class="n">×</span></button>`).join("")}
+
+  <!-- search bar always visible -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+    <input id="cmpSearch" placeholder="Add another ticker…" style="width:190px;padding:7px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font-size:13px"/>
+    <button data-cmpadd style="padding:7px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-size:13px">Add</button>
+    ${stocks.map(s=>`<button class="preset on" data-cmp="${s.t}" style="font-size:12px">${s.t} ×</button>`).join("")}
   </div>
 
   <div style="overflow-x:auto">
-  <table class="grid">
+  <table class="grid" style="min-width:600px">
     <thead><tr>
-      <th class="left" style="width:${colW}">Metric</th>
-      ${stocks.map(s=>`<th class="left" style="width:${colW}"><span class="tname" style="cursor:pointer" data-open="${s.t}">${s.t}</span><span class="tsub">${s.n}</span></th>`).join("")}
+      <th class="left" style="width:170px;font-size:12px">Metric</th>
+      ${stocks.map((s,i)=>`<th class="left" style="width:${colW}">
+        <span class="tname" style="cursor:pointer" data-open="${s.t}">${s.t}</span>
+        <span class="tsub">${s.n}</span>
+        <div style="font-size:11px;color:var(--dim);margin-top:2px">${s.sec||""} · ${s.mkt}</div>
+      </th>`).join("")}
     </tr></thead>
     <tbody>
-      ${metricRows.map(([label,fn,colorFn])=>`
-        <tr>
-          <td class="left" style="color:var(--dim);font-size:12.5px">${label}</td>
-          ${stocks.map(s=>`<td class="left" style="font-weight:700;${colorFn?`color:${colorFn(s)}`:''}">${fn(s)}</td>`).join("")}
-        </tr>`).join("")}
+
+    ${section("Valuation", "lower P/E, EV/EBITDA, PEG = better; higher FCF yield = better", [
+      ["Price",           stocks.map(s=>fmtP(s.price,s.mkt))],
+      ["Market cap",      stocks.map(s=>fmtB(s.mcap,s.mkt))],
+      ["P/E",             stocks.map(s=>s.pe?.toFixed(1)||"—")],
+      ["EV/EBITDA",       stocks.map(s=>s.evEbitda?.toFixed(1)||"—")],
+      ["PEG",             stocks.map(s=>s.peg?s.peg.toFixed(2)+(s.pegSource==="ni"?" (NI)":""):"—"),null,"PEG uses EPS growth when analyst consensus available, net income growth otherwise"],
+      ["FCF yield",       stocks.map(s=>pct(s.fcfYield))],
+      ["Earnings yield",  stocks.map(s=>pct(s.earnYield))],
+      ["DCF gap (MoS)",   stocks.map(s=>sign(s.mos)), stocks.map(s=>()=>clr(s.mos))],
+      ["Rule of 40",      stocks.map(s=>s.ruleOf40!=null?s.ruleOf40.toFixed(0)+(s.ruleOf40>=40?" ✓":""):"—")],
+    ])}
+
+    ${section("Growth", "", [
+      ["Revenue YoY",     stocks.map(s=>sign(s.revG)),    stocks.map(s=>()=>clr(s.revG))],
+      ["Revenue CAGR 3y", stocks.map(s=>sign(s.revCagr)), stocks.map(s=>()=>clr(s.revCagr))],
+      ["FCF YoY",         stocks.map(s=>sign(s.fcfG)),    stocks.map(s=>()=>clr(s.fcfG))],
+      ["FCF CAGR 3y",     stocks.map(s=>sign(s.fcfCagr)), stocks.map(s=>()=>clr(s.fcfCagr))],
+      ["NI YoY",          stocks.map(s=>sign(s.niG)),     stocks.map(s=>()=>clr(s.niG))],
+      ["Rev decel",       stocks.map(s=>s.revDecel!=null?sign(s.revDecel)+" pts":(s.revRecovery?"↑ recovery":"—"))],
+    ])}
+
+    ${section("Profitability & Cash", "", [
+      ["Net margin",      stocks.map(s=>pct(s.nmNow))],
+      ["Op margin",       stocks.map(s=>pct(s.omNow))],
+      ["EBITDA margin",   stocks.map(s=>pct(s.emNow))],
+      ["FCF / NI",        stocks.map(s=>s.fcfNi?.toFixed(2)||"—"), stocks.map(s=>()=>s.fcfNi>=THRESH.fcfNi.ok?"var(--good)":s.fcfNi<THRESH.fcfNi.weak?"var(--warn)":"inherit")],
+      ["Capex intensity", stocks.map(s=>pct(s.capexIntensity))],
+    ])}
+
+    ${section("Returns & Balance Sheet", "", [
+      ["ROE",             stocks.map(s=>pct(s.roe))],
+      ["ROA",             stocks.map(s=>pct(s.roa))],
+      ["Net debt/EBITDA", stocks.map(s=>s.debtToEbitda?.toFixed(1)+"×"||"—")],
+      ["Debt/Mkt cap",    stocks.map(s=>((s.debt/s.mcap)*100).toFixed(0)+"%")],
+    ])}
+
+    ${section("Quality (sector-relative percentile)", "each score = % of sector peers this stock beats", [
+      ["Overall quality", stocks.map(s=>rq[stocks.indexOf(s)].score+(rq[stocks.indexOf(s)].fallback?" (abs)":"th pct")),
+        stocks.map((s,i)=>()=>rq[i].score>=60?"var(--good)":rq[i].score<40?"var(--warn)":"inherit"),
+        "Percentile vs sector peers in same market. 60 = better than 60% of direct competitors."],
+      ["Growth pct",      stocks.map((s,i)=>rq[i].parts?.growth!=null?rq[i].parts.growth+"th":"—")],
+      ["Profitability pct",stocks.map((s,i)=>rq[i].parts?.profitability!=null?rq[i].parts.profitability+"th":"—")],
+      ["Cash quality pct",stocks.map((s,i)=>rq[i].parts?.cashQuality!=null?rq[i].parts.cashQuality+"th":"—")],
+      ["Balance sheet pct",stocks.map((s,i)=>rq[i].parts?.balanceSheet!=null?rq[i].parts.balanceSheet+"th":"—")],
+      ["Returns pct",     stocks.map((s,i)=>rq[i].parts?.returns!=null?rq[i].parts.returns+"th":"—")],
+      ["Decision verdict",stocks.map(s=>s.verdict?.l||"—"), stocks.map(s=>()=>s.verdict?.c||"inherit")],
+    ])}
+
+    ${section("Forensic Scores", "fraud/distress detection", [
+      ["Beneish M",       stocks.map((s,i)=>forensics[i].beneish?.score?.toFixed(2)||"n/a"),
+        stocks.map((s,i)=>()=>forensics[i].beneish?.flagged?"var(--warn)":"var(--good)"),
+        "Below −1.78 = manipulation pattern absent. n/a for financials."],
+      ["Beneish verdict", stocks.map((s,i)=>forensics[i].beneish?.flagged?"⚠ flagged":"✓ clean")],
+      ["Altman Z / Z″",   stocks.map((s,i)=>forensics[i].altman?.notApplicable?"n/a (financials)":forensics[i].altman?.score?.toFixed(2)||"—"),
+        stocks.map((s,i)=>()=>forensics[i].altman?.zone==="Safe zone"?"var(--good)":forensics[i].altman?.zone==="Distress zone"?"var(--warn)":"#b8860b")],
+      ["Altman zone",     stocks.map((s,i)=>forensics[i].altman?.notApplicable?"n/a":forensics[i].altman?.zone||"—")],
+      ["Piotroski F",     stocks.map((s,i)=>forensics[i].piotroski?.score!=null?forensics[i].piotroski.score+"/9":"—"),
+        stocks.map((s,i)=>()=>forensics[i].piotroski?.score>=7?"var(--good)":forensics[i].piotroski?.score<=3?"var(--warn)":"inherit"),
+        "9 = strongest financial health. 0–3 = weak."],
+    ])}
+
+    ${section("Veteran's Lens", "durability beyond one-year snapshots", [
+      ["Steadiness",      stocks.map((s,i)=>veteran[i].steadiness?.score!=null?veteran[i].steadiness.score+"/100":"—"),
+        stocks.map((s,i)=>()=>veteran[i].steadiness?.score>=60?"var(--good)":veteran[i].steadiness?.score<40?"var(--warn)":"inherit")],
+      ["Resilience",      stocks.map((s,i)=>veteran[i].resilience?.score!=null?veteran[i].resilience.score+"/100":"—"),
+        stocks.map((s,i)=>()=>veteran[i].resilience?.score>=60?"var(--good)":veteran[i].resilience?.score<40?"var(--warn)":"inherit")],
+      ["Reinvestment",    stocks.map((s,i)=>veteran[i].reinvest?.score!=null?veteran[i].reinvest.score+"/100":"—"),
+        stocks.map((s,i)=>()=>veteran[i].reinvest?.score>=60?"var(--good)":veteran[i].reinvest?.score<40?"var(--warn)":"inherit")],
+      ["Worst rev year",  stocks.map((s,i)=>veteran[i].resilience?.worstRev!=null?veteran[i].resilience.worstRev.toFixed(0)+"%":"—"),null,
+        "Worst single-year revenue decline. Used for position sizing."],
+      ["Implied growth",  stocks.map((s,i)=>veteran[i].impliedGrowth?.impliedTxt||"—"),null,
+        "What FCF growth the current price assumes. Compare to analyst consensus."],
+      ["Veteran composite",stocks.map((s,i)=>veteran[i].composite!=null?Math.round(veteran[i].composite)+"/100":"—"),
+        stocks.map((s,i)=>()=>veteran[i].composite>=60?"var(--good)":veteran[i].composite<40?"var(--warn)":"inherit")],
+    ])}
+
+    ${section("Funnel Audit — Stage 1 (Data Integrity)", "", [
+      ...( FUNNEL_STAGES.find(st=>st.id===1)?.conditions||[] ).map(c=>[
+        c.label.replace(/^(HARD|SOFT) — /,"").slice(0,45),
+        funnelAudit.map((fa,i)=>{ const r=fa[1]?.find(x=>x.id===c.id); return r?stageIcon(r.status):"—"; }),
+        funnelAudit.map((fa,i)=>()=>{ const r=fa[1]?.find(x=>x.id===c.id); return r?stageColor(r.status):"inherit"; }),
+      ])
+    ])}
+
+    ${section("Funnel Audit — Stage 2 (Forensic Honesty)", "", [
+      ...( FUNNEL_STAGES.find(st=>st.id===2)?.conditions||[] ).map(c=>[
+        c.label.replace(/^(HARD|SOFT) — /,"").slice(0,45),
+        funnelAudit.map((fa,i)=>{ const r=fa[2]?.find(x=>x.id===c.id); return r?stageIcon(r.status):"—"; }),
+        funnelAudit.map((fa,i)=>()=>{ const r=fa[2]?.find(x=>x.id===c.id); return r?stageColor(r.status):"inherit"; }),
+      ])
+    ])}
+
+    ${section("Funnel Audit — Stage 3 (Business Quality)", "", [
+      ...( FUNNEL_STAGES.find(st=>st.id===3)?.conditions||[] ).map(c=>[
+        c.label.replace(/^(HARD|SOFT) — /,"").slice(0,45),
+        funnelAudit.map((fa,i)=>{ const r=fa[3]?.find(x=>x.id===c.id); return r?stageIcon(r.status):"—"; }),
+        funnelAudit.map((fa,i)=>()=>{ const r=fa[3]?.find(x=>x.id===c.id); return r?stageColor(r.status):"inherit"; }),
+      ])
+    ])}
+
+    ${section("Funnel Audit — Stage 4 (Price)", "", [
+      ...( FUNNEL_STAGES.find(st=>st.id===4)?.conditions||[] ).map(c=>[
+        c.label.replace(/^(HARD|SOFT) — /,"").slice(0,45),
+        funnelAudit.map((fa,i)=>{ const r=fa[4]?.find(x=>x.id===c.id); return r?stageIcon(r.status):"—"; }),
+        funnelAudit.map((fa,i)=>()=>{ const r=fa[4]?.find(x=>x.id===c.id); return r?stageColor(r.status):"inherit"; }),
+      ])
+    ])}
+
+    ${section("Funnel Audit — Stage 5 (Timing)", "⚠ = soft caution (never rejects)", [
+      ...( FUNNEL_STAGES.find(st=>st.id===5)?.conditions||[] ).map(c=>[
+        c.label.replace(/^(HARD|SOFT) — /,"").slice(0,45),
+        funnelAudit.map((fa,i)=>{ const r=fa[5]?.find(x=>x.id===c.id); return r?stageIcon(r.status):"—"; }),
+        funnelAudit.map((fa,i)=>()=>{ const r=fa[5]?.find(x=>x.id===c.id); return r?stageColor(r.status):"inherit"; }),
+      ])
+    ])}
+
     </tbody>
   </table>
   </div>
+  <p class="hint" style="margin-top:12px">✓ = passes · ✗ = fails · ⚠ = soft caution · ◌ = not assessable (data missing). Green values = best in this comparison. Funnel conditions are re-evaluated live — not from a prior run.</p>
 
+  <!-- overlay line charts -->
   <div class="panelgrid" style="margin-top:18px">
     <div class="panel wide">
-      <div class="panelhead"><span class="panelt">Revenue trend (annual)</span><span class="panels">overlaid, last 4 years</span></div>
+      <div class="panelhead"><span class="panelt">Revenue trend</span><span class="panels">overlaid · last 4 years</span></div>
       ${svgLineChart(stocks.map((s,i)=>({color:CMP_COLORS[i%CMP_COLORS.length],data:s.annual.revenue})), stocks[0]?.annual.periods||[])}
       <div class="legend">${stocks.map((s,i)=>`<span class="legitem"><i style="background:${CMP_COLORS[i%CMP_COLORS.length]}"></i>${s.t}</span>`).join("")}</div>
     </div>
     <div class="panel wide">
-      <div class="panelhead"><span class="panelt">Free cash flow trend (annual)</span><span class="panels">overlaid, last 4 years</span></div>
+      <div class="panelhead"><span class="panelt">Free cash flow trend</span><span class="panels">overlaid · last 4 years</span></div>
       ${svgLineChart(stocks.map((s,i)=>({color:CMP_COLORS[i%CMP_COLORS.length],data:s.annual.fcf})), stocks[0]?.annual.periods||[])}
       <div class="legend">${stocks.map((s,i)=>`<span class="legitem"><i style="background:${CMP_COLORS[i%CMP_COLORS.length]}"></i>${s.t}</span>`).join("")}</div>
     </div>
+    <div class="panel wide">
+      <div class="panelhead"><span class="panelt">Net margin trend</span><span class="panels">overlaid · last 4 years</span></div>
+      ${svgLineChart(stocks.map((s,i)=>({color:CMP_COLORS[i%CMP_COLORS.length],data:(s.annual.margins||[]).map(m=>m?.net)})), stocks[0]?.annual.periods||[])}
+      <div class="legend">${stocks.map((s,i)=>`<span class="legitem"><i style="background:${CMP_COLORS[i%CMP_COLORS.length]}"></i>${s.t}</span>`).join("")}</div>
+    </div>
   </div>
-  <p class="hint">Note: charts overlay raw values across markets/currencies — comparing US (USD bn) and India (INR cr) trend shapes is fine, but absolute scale differs. Use the metric table above for cross-market comparisons.</p>
-  `;
+  <p class="hint">Charts overlay trend shapes — absolute scale differs for cross-market (₹ vs $) comparisons.</p>`;
 }
+
 const CMP_COLORS=["#0e6e5c","#6d5dd3","#c0392b","#b8860b","#2563eb"];
 
 /* ============================================================
