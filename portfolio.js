@@ -111,6 +111,10 @@ function pfCompute(){
   const rows = computeRows();
   const ctx = {rows};
   const items=[], pending=[];
+  // Prune P.custom: remove any ticker that has arrived in State.data
+  const inData = new Set(rows.map(r=>r.t));
+  P.custom.US = P.custom.US.filter(t=>!inData.has(t));
+  P.custom.IN = P.custom.IN.filter(t=>!inData.has(t));
   P.holdings.forEach(h=>{
     const s = rows.find(x=>x.t===h.t);
     if(!s){ pending.push(h); return; }
@@ -213,14 +217,32 @@ function renderPortfolio(){
     <p class="hint" style="margin-top:8px">If the ticker is already in the loaded universe it's analyzed instantly. If not, it goes on the custom list below — the browser can't fetch Yahoo data directly (CORS), so the pipeline does it on its next run, with the exact same logic as every other stock. No code editing needed.</p>
   </div>`;
 
+  const cfg = getGithubCfg();
   const customList = (P.custom.US.length+P.custom.IN.length) ? `<div class="panel wide" style="border-left:3px solid var(--accent)">
-    <div class="panelhead"><span class="panelt">Custom tickers pending pipeline run (${P.custom.US.length+P.custom.IN.length})</span></div>
-    <p style="font-size:13.5px;color:var(--dim)">${P.custom.IN.length?`IN: ${P.custom.IN.join(", ")}`:""} ${P.custom.US.length?` · US: ${P.custom.US.join(", ")}`:""}</p>
-    <div style="display:flex;gap:10px;align-items:center">${wfBtn("Download custom_tickers.json","data-pfdlcustom='1'",true)}
-      <span class="hint" style="margin:0">→ put it in the repo root → <code>python fetch_data.py</code> → commit data.json. Done.</span></div>
+    <div class="panelhead"><span class="panelt">Custom tickers queued (${P.custom.US.length+P.custom.IN.length} awaiting pipeline)</span></div>
+    <p style="font-size:13.5px;color:var(--dim)">${P.custom.IN.length?"IN: "+P.custom.IN.join(", "):""} ${P.custom.US.length?" · US: "+P.custom.US.join(", "):""}</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      ${cfg.token&&cfg.repo ? wfBtn("Push to GitHub automatically →","data-pfghpush='1'",true) : ""}
+      ${wfBtn("Download custom_tickers.json","data-pfdlcustom='1'")}
+    </div>
+    ${!cfg.token||!cfg.repo ? "<p class='hint' style='margin-top:8px'>↓ Connect GitHub below to push automatically — no manual file steps needed.</p>" : "<p class='hint' style='margin-top:8px'>After pushing, the fetch-custom.yml workflow fetches only these tickers (~2 min). Reload when done.</p>"}
   </div>` : "";
 
   /* holdings table */
+  const ghCard = `<div class="panel wide">
+    <div class="panelhead"><span class="panelt">GitHub auto-push (optional)</span><span class="panels">push custom_tickers.json automatically — no manual file steps</span></div>
+    <p style="font-size:13.5px;color:var(--dim);line-height:1.6">Set once. Every time you add a custom ticker, the file is pushed to your repo automatically and the GitHub Actions workflow fetches it within ~2 minutes. Needs a <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="color:var(--accent)">fine-grained PAT</a> with <b>read+write Contents</b> on your repo. The token is stored only in your browser's localStorage — never sent anywhere but GitHub.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div><div class="kpiL">GitHub token (fine-grained PAT)</div>
+        <input id="pfGhToken" type="password" placeholder="github_pat_..." value="${cfg.token||""}"
+          style="width:260px;padding:8px;border:1px solid ${cfg.token?"var(--good)":"var(--line)"};border-radius:6px;background:var(--panel);color:var(--ink);font-size:13px"/></div>
+      <div><div class="kpiL">Repo (owner/repo)</div>
+        <input id="pfGhRepo" placeholder="yourname/terminal" value="${cfg.repo||""}"
+          style="width:200px;padding:8px;border:1px solid ${cfg.repo?"var(--good)":"var(--line)"};border-radius:6px;background:var(--panel);color:var(--ink);font-size:13px"/></div>
+      ${wfBtn("Save","data-pfghsave='1'",!!(cfg.token&&cfg.repo))}
+      ${cfg.token&&cfg.repo ? "<span class='hint' style='margin:0'>✓ Connected — new tickers will push automatically</span>" : ""}
+    </div>
+  </div>`;
   let holdingsCard = "";
   if(P.holdings.length){
     const rowsHtml = pc.items.sort((a,b)=>(b.weight??-1)-(a.weight??-1)).map(x=>{
@@ -279,11 +301,32 @@ function renderPortfolio(){
     </div>`;
   }
 
-  return `<div style="margin-top:10px"></div>${importCard}${addCard}${customList}${holdingsCard}${concCard}${optCard}
+  return `<div style="margin-top:10px"></div>${importCard}${addCard}${ghCard}${customList}${holdingsCard}${concCard}${optCard}
     ${P.holdings.length?`<p class="hint">${wfBtn("Clear portfolio","data-pfclear='1'")}</p>`:""}`;
 }
 
 /* ---------- wiring ---------- */
+/* Push custom_tickers.json to GitHub via the Contents API.
+   Requires: a fine-grained PAT scoped to the repo, read+write on Contents.
+   User sets token+repo once; stored in localStorage (never sent anywhere but GitHub). */
+async function pushCustomToGitHub(customObj){
+  const cfg = getGithubCfg();
+  if(!cfg.token || !cfg.repo) return false;
+  const path = "custom_tickers.json";
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(customObj, null, 2))));
+  const base = `https://api.github.com/repos/${cfg.repo}/contents/${path}`;
+  // Get current SHA (needed for update)
+  let sha = null;
+  try { const r = await fetch(base, {headers:{Authorization:`Bearer ${cfg.token}`}});
+    if(r.ok){ const j=await r.json(); sha=j.sha; } } catch(e){}
+  const body = {message:`custom: update tickers ${new Date().toISOString().slice(0,10)}`, content};
+  if(sha) body.sha = sha;
+  const res = await fetch(base, {method:"PUT", headers:{Authorization:`Bearer ${cfg.token}`,"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  return res.ok;
+}
+function getGithubCfg(){ try{ return JSON.parse(localStorage.getItem("terminal_gh")||"{}"); }catch(e){ return {}; } }
+function saveGithubCfg(cfg){ localStorage.setItem("terminal_gh", JSON.stringify(cfg)); }
+
 function wirePortfolio(root){
   if(!State.portfolio) return;
   const P = State.portfolio;
@@ -318,14 +361,29 @@ function wirePortfolio(root){
     }
   });
   on("[data-pfmkt]", el=>{ P.addMkt=el.dataset.pfmkt; savePortfolio(); render(); });
-  on("[data-pfadd]", ()=>{
+  on("[data-pfadd]", async ()=>{
     const t=(root.querySelector("#pfTicker")?.value||"").toUpperCase().trim().replace(/\.(NS|BO)$/,"");
     if(!t) return;
     const qty=parseFloat(root.querySelector("#pfQty")?.value)||null;
     const cost=parseFloat(root.querySelector("#pfCost")?.value)||null;
     const mkt=P.addMkt||"IN";
     importHoldingsRows([{t, mkt, qty, cost}]);
-    P.lastImport = State.data.some(s=>s.t===t) ? `${t} added — analyzed below.` : `${t} added to the custom list — download custom_tickers.json and run the pipeline to analyze it.`;
+    const inUni = State.data.some(s=>s.t===t);
+    if(inUni){
+      P.lastImport = `${t} added — already in the loaded universe, analyzed below.`;
+    } else {
+      const cfg = getGithubCfg();
+      if(cfg.token && cfg.repo){
+        P.lastImport = `${t} added — pushing custom_tickers.json to GitHub automatically…`;
+        savePortfolio(); render();
+        const ok = await pushCustomToGitHub({US:P.custom.US, IN:P.custom.IN});
+        P.lastImport = ok
+          ? `${t} pushed to GitHub ✓ — the Actions workflow will fetch it in ~2 minutes. Reload the page when the pipeline completes to see the full analysis.`
+          : `${t} added to custom list but GitHub push failed — check your token and repo in the GitHub settings below, or download the file manually.`;
+      } else {
+        P.lastImport = `${t} added to the custom list. Connect GitHub below to push automatically, or download custom_tickers.json and commit it to your repo.`;
+      }
+    }
     savePortfolio(); render();
   });
   on("[data-pfrm]", el=>{ P.holdings=P.holdings.filter(h=>h.t!==el.dataset.pfrm);
@@ -335,5 +393,18 @@ function wirePortfolio(root){
   on("[data-pfdlcustom]", ()=>{
     const blob=new Blob([JSON.stringify({US:P.custom.US, IN:P.custom.IN}, null, 2)], {type:"application/json"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="custom_tickers.json"; a.click();
+  });
+  on("[data-pfghpush]", async ()=>{
+    P.lastImport = "Pushing custom_tickers.json to GitHub…"; savePortfolio(); render();
+    const ok = await pushCustomToGitHub({US:P.custom.US, IN:P.custom.IN});
+    P.lastImport = ok ? "Pushed ✓ — reload in ~2 minutes once the Actions workflow completes." : "Push failed — check your token and repo name below.";
+    savePortfolio(); render();
+  });
+  on("[data-pfghsave]", ()=>{
+    const token=(root.querySelector("#pfGhToken")?.value||"").trim();
+    const repo=(root.querySelector("#pfGhRepo")?.value||"").trim();
+    saveGithubCfg({token, repo});
+    P.lastImport = token&&repo ? `GitHub connected: ${repo}` : "GitHub config cleared.";
+    savePortfolio(); render();
   });
 }

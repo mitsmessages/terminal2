@@ -43,7 +43,7 @@ const IN_INDEX_LABELS = {
 
 /* ---------- funnel state (persisted) ---------- */
 const FUNNEL_DEFAULT = {
-  market:null, index:null, sector:"ALL",
+  market:null, index:null, sector:"ALL", openStock:null,
   stage:0,                 // current stage the user is on
   readAck:{},              // stageId -> true once teaching card acknowledged
   stageResults:{},         // stageId -> {pass:[t], fail:[{t,n,reasons}], ranAt}
@@ -512,6 +512,43 @@ function wfInProgressWarning(f){
     + '</div>';
 }
 
+/* ============================================================
+   FULL 6-STAGE STOCK BREAKDOWN (click any name in the roster)
+   ============================================================ */
+function renderWfStockBreakdown(ticker, f){
+  const rows = computeRows();
+  const s = rows.find(x=>x.t===ticker);
+  if(!s) return `<div class="panel wide"><p class="hint">${ticker} not found in loaded data.</p></div>`;
+  const ctx = {rows};
+  const stageHtml = FUNNEL_STAGES.filter(st=>st.id>=1&&st.id<=5&&st.conditions).map(st=>{
+    const prevResult = f.stageResults[st.id];
+    const conditions = st.conditions.map(c=>{
+      let r; try { r=c.test(s,ctx); } catch(e){ r={status:"na",reason:"Error: "+e.message}; }
+      const icon = r.status==="pass"?"✓":r.status==="warn"?"⚠":r.status==="na"?"◌":"✗";
+      const color = r.status==="pass"?"var(--good)":r.status==="warn"?"#b8860b":r.status==="na"?"var(--dim)":"var(--warn)";
+      return `<div style="padding:8px 12px;border-left:3px solid ${color};border-radius:0 6px 6px 0;margin:5px 0;background:var(--bg)">
+        <div style="font-size:13px;font-weight:600;color:${color}">${icon} ${c.label.replace(/^(HARD|SOFT) — /,"")}</div>
+        <div style="font-size:12.5px;color:var(--dim);margin-top:3px;line-height:1.5">${r.reason||""}${r.status==="fail"&&r.reentry?`<br><span style="color:var(--accent)">↩ Comes back when: ${r.reentry}</span>`:""}</div>
+      </div>`;
+    }).join("");
+    const inPass=prevResult?.pass?.includes(ticker), inFail=prevResult?.fail?.find(x=>x.t===ticker);
+    const badge=prevResult?`<span class="pill ${inPass?"good":inFail?"warn":"neutral"}" style="font-size:11px">${inPass?"✓ passed last run":inFail?"✗ rejected last run":"not in last run scope"}</span>`:`<span class="pill neutral" style="font-size:11px">not run yet</span>`;
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><b style="font-size:14px">Stage ${st.id} — ${st.name}</b>${badge}</div>
+      <p style="font-size:12.5px;color:var(--dim);margin:0 0 6px">${st.question||""}</p>
+      ${conditions}</div>`;
+  }).join(`<div style="border-top:1px solid var(--line);margin:10px 0"></div>`);
+  const v=veteranMetrics(s), worst=v?.resilience?.worstRev;
+  const sizeNote=worst!=null?`Worst revenue year: ${worst.toFixed(0)}%. A repeat could move the stock ~${Math.min(80,Math.abs(Math.min(worst,0))*1.5).toFixed(0)}% — size your position to survive it.`:"Insufficient history for worst-year sizing.";
+  return `<div class="panel wide" style="border:2px solid var(--accent);margin-bottom:14px">
+    <div class="panelhead"><span class="panelt">${ticker} <span class="tsub">${s.n}</span> — full 6-stage breakdown</span>
+      <button data-wfstockclose style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--dim);padding:0 4px">✕ close</button></div>
+    <p style="font-size:13px;color:var(--dim);margin:0 0 12px">Every condition re-evaluated live against current data · ${f.sector!=="ALL"?f.sector+" sector":"all sectors"}</p>
+    ${stageHtml}
+    <div style="margin-top:10px;padding:8px 12px;background:var(--bg);border-radius:6px;font-size:13px;color:var(--dim)">
+      <b>Stage 6 sizing:</b> ${sizeNote}</div></div>`;
+}
+
 function runFunnelStage(stageId){
   const stage = FUNNEL_STAGES.find(st=>st.id===stageId);
   if(!stage || !stage.conditions) return;
@@ -688,21 +725,26 @@ function renderWorkflow(){
     const detail = res.detail||{};
     const failRows = res.fail.map(fx=>{
       const watched = (State.funnel.tickets||[]).some(tk=>tk.t===fx.t && tk.stage===st.id);
-      return `<tr><td class="left"><span class="tname">${fx.t}</span><span class="tsub">${fx.n}</span></td>
+      return `<tr>
+        <td class="left" style="white-space:nowrap">
+          <span class="tname" data-wfstockopen="${fx.t}" style="cursor:pointer" title="Full 6-stage breakdown">${fx.t}</span>
+          <span class="tsub">${fx.n}</span>
+          <button data-wfwatch="${fx.t}:${st.id}" title="${watched?"Remove from watchlist":"Save to re-entry watchlist"}"
+            style="margin-left:6px;background:none;border:1px solid ${watched?"var(--accent)":"var(--line)"};border-radius:5px;cursor:pointer;padding:2px 6px;font-size:13px;color:${watched?"var(--accent)":"var(--dim)"}">${watched?"★":"☆"}</button>
+        </td>
         <td><span class="pill warn">rejected</span></td>
-        <td class="left" style="font-size:13px;line-height:1.55;color:var(--dim)">${fx.reasons.join("<br>")}</td>
-        <td><button data-wfwatch="${fx.t}:${st.id}" title="${watched?"Remove from watchlist":"Save to re-entry watchlist"}"
-          style="background:none;border:1px solid ${watched?"var(--accent)":"var(--line)"};border-radius:5px;cursor:pointer;padding:3px 8px;font-size:14px;color:${watched?"var(--accent)":"var(--dim)"}">${watched?"★":"☆"}</button></td></tr>`;
+        <td class="left" style="font-size:13px;line-height:1.55;color:var(--dim)">${fx.reasons.join("<br>")}</td></tr>`;
     }).join("");
     const passRows = res.pass.map(t=>{
       const d=(detail[t]||[]);
       const naCount=d.filter(x=>x.status==="na").length;
       const warnCount=d.filter(x=>x.status==="warn").length;
-      const watched = (State.funnel.tickets||[]).some(tk=>tk.t===t && tk.stage===st.id);
-      return `<tr><td class="left"><span class="tname">${t}</span></td>
-        <td><span class="pill good">passed</span>${warnCount?` <span class="pill neutral" title="soft cautions — annotate, never reject">${warnCount} caution${warnCount>1?"s":""}</span>`:""}${naCount?` <span class="pill neutral" title="some checks not assessable">${naCount} unverified</span>`:""}</td>
-        <td class="left" style="font-size:13px;color:var(--dim)">${d.map(x=>`${x.status==="pass"?"✓":x.status==="na"?"◌":x.status==="warn"?"⚠":"✗"} ${x.label}`).join(" · ")}</td>
-        <td style="color:var(--dim);font-size:12px">—</td></tr>`;
+      return `<tr>
+        <td class="left" style="white-space:nowrap">
+          <span class="tname" data-wfstockopen="${t}" style="cursor:pointer" title="Full 6-stage breakdown">${t}</span>
+        </td>
+        <td><span class="pill good">passed</span>${warnCount?` <span class="pill neutral" title="soft cautions">${warnCount}⚠</span>`:""}${naCount?` <span class="pill neutral">${naCount} n/a</span>`:""}</td>
+        <td class="left" style="font-size:13px;color:var(--dim)">${d.map(x=>`${x.status==="pass"?"✓":x.status==="na"?"◌":x.status==="warn"?"⚠":"✗"} ${x.label}`).join(" · ")}</td></tr>`;
     }).join("");
     // Fix 7: stale-result banner when fingerprint doesn't match current selection
     const currentFP = funnelFingerprint(f);
@@ -712,11 +754,13 @@ function renderWorkflow(){
         ⚠ <b>Selection changed since this was run.</b> This result is from <code>${resultFP}</code> — your current selection is <code>${currentFP}</code>.
         Re-run to get results for the new selection.
       </div>` : "";
+    const breakdown = f.openStock ? renderWfStockBreakdown(f.openStock, f) : "";
     rosterHtml = `<div class="panel wide" data-stageresult="1">
       <div class="panelhead"><span class="panelt">Result: ${res.pass.length} of ${res.total} pass Stage ${st.id}</span><span class="panels">every rejection shows its exact reason — that's the lesson</span></div>
       ${staleBanner}
+      ${breakdown}
       <div style="overflow-x:auto"><table class="grid" style="width:100%">
-        <thead><tr><th class="left">Stock</th><th>Verdict</th><th class="left">Why</th><th title="Save to re-entry watchlist">Watch</th></tr></thead>
+        <thead><tr><th class="left">Stock</th><th>Verdict</th><th class="left">Why — click name for full 6-stage breakdown</th></tr></thead>
         <tbody>${failRows}${passRows}</tbody></table></div>
       <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         ${!staleBanner?wfBtn(`Continue to Stage ${st.id+1} with ${res.pass.length} survivors →`,`data-wfnext="1"`,true):""}
@@ -789,6 +833,12 @@ function wireWorkflow(root){
     root.querySelectorAll(`[data-wf6q^="${t}:"]`).forEach(ta=>{ ans[ta.dataset.wf6q.split(":")[1]]=ta.value; });
     F.qualitative[t]=ans; saveFunnel(); render();
   });
+  on("[data-wfstockopen]", el=>{
+    F.openStock = F.openStock===el.dataset.wfstockopen ? null : el.dataset.wfstockopen;
+    saveFunnel(); render();
+    setTimeout(()=>{ const el2=document.querySelector('[data-stageresult]'); if(el2) el2.scrollIntoView({behavior:'smooth',block:'start'}); },60);
+  });
+  on("[data-wfstockclose]", ()=>{ F.openStock=null; saveFunnel(); render(); });
   on("[data-wfwatch]", el=>{
     const [ticker, stageId] = el.dataset.wfwatch.split(":");
     const sid = +stageId;
