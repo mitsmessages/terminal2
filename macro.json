@@ -1,45 +1,45 @@
 {
-  "asOf": "2026-07-05 00:13 UTC",
+  "asOf": "2026-07-06 00:05 UTC",
   "series": {
     "us10y": {
       "label": "US 10-Year Treasury Yield",
       "unit": "%",
-      "current": 4.37,
-      "chg30d": -2.43,
-      "chg90d": -1.53,
-      "level1yPct": 58.4
+      "current": 4.49,
+      "chg30d": 0.67,
+      "chg90d": 3.99,
+      "level1yPct": 75.2
     },
     "us3m": {
       "label": "US 3-Month Yield",
       "unit": "%",
-      "current": 3.66,
-      "chg30d": 2.18,
-      "chg90d": 1.55,
-      "level1yPct": 20.6
+      "current": 3.67,
+      "chg30d": 1.38,
+      "chg90d": 1.69,
+      "level1yPct": 21.9
     },
     "crude": {
       "label": "Crude Oil (WTI)",
       "unit": "$/bbl",
-      "current": 68.78,
-      "chg30d": -28.37,
-      "chg90d": -38.34,
-      "level1yPct": 23.4
+      "current": 68.24,
+      "chg30d": -24.63,
+      "chg90d": -39.29,
+      "level1yPct": 22.5
     },
     "usdinr": {
       "label": "USD/INR",
       "unit": "\u20b9",
       "current": 95.2,
-      "chg30d": -0.07,
-      "chg90d": 2.39,
-      "level1yPct": 87.9
+      "chg30d": -0.62,
+      "chg90d": 2.57,
+      "level1yPct": 87.7
     },
     "dxy": {
       "label": "US Dollar Index",
       "unit": "",
-      "current": 100.86,
-      "chg30d": 1.33,
-      "chg90d": 0.83,
-      "level1yPct": 86.1
+      "current": 100.88,
+      "chg30d": 0.81,
+      "chg90d": 0.9,
+      "level1yPct": 86.5
     },
     "vix": {
       "label": "VIX (Volatility Index)",
@@ -52,18 +52,27 @@
     "gold": {
       "label": "Gold",
       "unit": "$/oz",
-      "current": 4187.3,
-      "chg30d": -5.62,
-      "chg90d": -9.98,
-      "level1yPct": 44.1
+      "current": 4194.9,
+      "chg30d": -3.28,
+      "chg90d": -9.92,
+      "level1yPct": 44.5
     },
     "copper": {
       "label": "Copper",
       "unit": "$/lb",
-      "current": 6.22,
-      "chg30d": -3.97,
-      "chg90d": 11.88,
-      "level1yPct": 81.5
+      "current": 6.23,
+      "chg30d": -0.47,
+      "chg90d": 11.65,
+      "level1yPct": 81.9
+    },
+    "in10y": {
+      "label": "India 10-Year G-Sec (manual constant, updated 2026-07)",
+      "unit": "%",
+      "current": 6.8,
+      "chg30d": null,
+      "chg90d": null,
+      "level1yPct": null,
+      "source": "manual \u2014 RBI/CCIL published yield; update the constant in fetch_macro.py when it moves materially"
     }
   }
 }
