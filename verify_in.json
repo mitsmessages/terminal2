@@ -913,7 +913,7 @@
     "ticker": "MAZDOCK",
     "nseHigh52": 3369.0,
     "nseLow52": 2057.4,
-    "high52DiffPct": null,
+    "high52DiffPct": -6.52,
     "low52DiffPct": null
   },
   {
@@ -1719,7 +1719,7 @@
     "nseHigh52": 2120.0,
     "nseLow52": 1031.45,
     "high52DiffPct": null,
-    "low52DiffPct": 5.92
+    "low52DiffPct": 7.44
   },
   {
     "ticker": "MOTILALOFS",
