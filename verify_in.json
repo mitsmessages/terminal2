@@ -1179,7 +1179,7 @@
     "ticker": "GREAVESCOT",
     "nseHigh52": 244.3,
     "nseLow52": 119.99,
-    "high52DiffPct": null,
+    "high52DiffPct": 9.29,
     "low52DiffPct": null
   },
   {
@@ -1719,7 +1719,7 @@
     "nseHigh52": 2120.0,
     "nseLow52": 1031.45,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 5.92
   },
   {
     "ticker": "MOTILALOFS",
@@ -1774,7 +1774,7 @@
     "ticker": "KFINTECH",
     "nseHigh52": 1388.5,
     "nseLow52": 784.95,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.78,
     "low52DiffPct": null
   },
   {
@@ -1942,7 +1942,7 @@
     "ticker": "J&KBANK",
     "nseHigh52": 171.0,
     "nseLow52": 97.35,
-    "high52DiffPct": null,
+    "high52DiffPct": 17.98,
     "low52DiffPct": null
   },
   {
@@ -2040,7 +2040,7 @@
     "ticker": "GODREJIND",
     "nseHigh52": 1325.0,
     "nseLow52": 744.2,
-    "high52DiffPct": null,
+    "high52DiffPct": 8.91,
     "low52DiffPct": null
   },
   {
