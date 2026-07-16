@@ -501,7 +501,7 @@
     "nseHigh52": 2064.9,
     "nseLow52": 1629.5,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": -5.21
   },
   {
     "ticker": "ABB",
@@ -2516,7 +2516,7 @@
     "ticker": "JPPOWER",
     "nseHigh52": 27.14,
     "nseLow52": 13.15,
-    "high52DiffPct": -8.14,
+    "high52DiffPct": -9.73,
     "low52DiffPct": null
   },
   {
@@ -2775,7 +2775,7 @@
     "ticker": "GRINDWELL",
     "nseHigh52": 2294.4,
     "nseLow52": 1329.0,
-    "high52DiffPct": null,
+    "high52DiffPct": 7.0,
     "low52DiffPct": null
   },
   {
@@ -2824,7 +2824,7 @@
     "ticker": "JUSTDIAL",
     "nseHigh52": 957.9,
     "nseLow52": 480.5,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.43,
     "low52DiffPct": null
   },
   {
