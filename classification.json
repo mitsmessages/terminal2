@@ -1,5 +1,5 @@
 {
-  "asOf": "2026-07-06 00:21 UTC",
+  "asOf": "2026-07-20 22:06 UTC",
   "source": "NSE / Nifty Indices official constituent files",
   "indices": {
     "NIFTY50": [
@@ -614,7 +614,6 @@
       "IGIL",
       "IKS",
       "IPCALAB",
-      "JBCHEPHARM",
       "JKCEMENT",
       "JBMA",
       "JKTYRE",
@@ -741,6 +740,7 @@
       "POWERGRID",
       "PREMIERENE",
       "PRESTIGE",
+      "PFOCUS",
       "PNB",
       "RRKABEL",
       "RBLBANK",
@@ -1140,7 +1140,6 @@
       "INTELLECT",
       "IGIL",
       "IKS",
-      "JBCHEPHARM",
       "JBMA",
       "JKTYRE",
       "JMFINANCIL",
@@ -1202,6 +1201,7 @@
       "PPLPHARMA",
       "POLYMED",
       "POONAWALLA",
+      "PFOCUS",
       "RRKABEL",
       "RBLBANK",
       "RHIM",
@@ -1304,11 +1304,11 @@
       "GLAND",
       "GLENMARK",
       "IPCALAB",
-      "JBCHEPHARM",
       "LAURUSLABS",
       "LUPIN",
       "MANKIND",
       "PPLPHARMA",
+      "SAILIFE",
       "SUNPHARMA",
       "TORNTPHARM",
       "WOCKPHARMA",
@@ -3206,11 +3206,6 @@
       "name": "Ipca Laboratories Ltd.",
       "isin": "INE571A01038"
     },
-    "JBCHEPHARM": {
-      "industry": "Healthcare",
-      "name": "J.B. Chemicals & Pharmaceuticals Ltd.",
-      "isin": "INE572A01036"
-    },
     "JKCEMENT": {
       "industry": "Construction Materials",
       "name": "J.K. Cement Ltd.",
@@ -3575,6 +3570,11 @@
       "industry": "Financial Services",
       "name": "Poonawalla Fincorp Ltd.",
       "isin": "INE511C01022"
+    },
+    "PFOCUS": {
+      "industry": "Media Entertainment & Publication",
+      "name": "Prime Focus Ltd.",
+      "isin": "INE367G01038"
     },
     "RRKABEL": {
       "industry": "Capital Goods",
