@@ -1865,7 +1865,7 @@
     "ticker": "HOMEFIRST",
     "nseHigh52": 1519.0,
     "nseLow52": 893.7,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.13,
     "low52DiffPct": null
   },
   {
@@ -2474,7 +2474,7 @@
     "ticker": "ZEEL",
     "nseHigh52": 135.53,
     "nseLow52": 68.0,
-    "high52DiffPct": null,
+    "high52DiffPct": -8.4,
     "low52DiffPct": null
   },
   {
@@ -2544,7 +2544,7 @@
     "ticker": "TRIDENT",
     "nseHigh52": 33.66,
     "nseLow52": 21.98,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.26,
     "low52DiffPct": null
   },
   {
