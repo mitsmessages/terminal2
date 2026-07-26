@@ -1,5 +1,5 @@
 {
-  "asOf": "2026-07-25 21:04 UTC",
+  "asOf": "2026-07-26 21:13 UTC",
   "series": {
     "us10y": {
       "label": "US 10-Year Treasury Yield",
@@ -28,10 +28,10 @@
     "usdinr": {
       "label": "USD/INR",
       "unit": "\u20b9",
-      "current": 96.56,
-      "chg30d": 2.24,
-      "chg90d": 2.6,
-      "level1yPct": 97.0
+      "current": 96.55,
+      "chg30d": 2.28,
+      "chg90d": 2.44,
+      "level1yPct": 96.9
     },
     "dxy": {
       "label": "US Dollar Index",
@@ -52,18 +52,18 @@
     "gold": {
       "label": "Gold",
       "unit": "$/oz",
-      "current": 4067.6,
-      "chg30d": 1.94,
-      "chg90d": -13.86,
-      "level1yPct": 38.2
+      "current": 4070.8,
+      "chg30d": 2.02,
+      "chg90d": -13.8,
+      "level1yPct": 38.4
     },
     "copper": {
       "label": "Copper",
       "unit": "$/lb",
-      "current": 6.32,
-      "chg30d": 6.34,
-      "chg90d": 4.92,
-      "level1yPct": 85.8
+      "current": 6.36,
+      "chg30d": 6.97,
+      "chg90d": 5.54,
+      "level1yPct": 87.5
     },
     "in10y": {
       "label": "India 10-Year G-Sec (manual constant, updated 2026-07)",
