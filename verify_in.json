@@ -22,7 +22,7 @@
   },
   {
     "ticker": "ICICIBANK",
-    "nseHigh52": 1500.0,
+    "nseHigh52": 1494.5,
     "nseLow52": 1187.6,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -99,7 +99,7 @@
   },
   {
     "ticker": "SUNPHARMA",
-    "nseHigh52": 1966.5,
+    "nseHigh52": 1977.0,
     "nseLow52": 1548.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -141,7 +141,7 @@
   },
   {
     "ticker": "TITAN",
-    "nseHigh52": 4733.0,
+    "nseHigh52": 4749.1,
     "nseLow52": 3303.1,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -239,7 +239,7 @@
   },
   {
     "ticker": "DLF",
-    "nseHigh52": 844.35,
+    "nseHigh52": 820.45,
     "nseLow52": 489.4,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -351,7 +351,7 @@
   },
   {
     "ticker": "SHREECEM",
-    "nseHigh52": 32270.0,
+    "nseHigh52": 31920.0,
     "nseLow52": 22550.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -380,7 +380,7 @@
   {
     "ticker": "TVSMOTOR",
     "nseHigh52": 3974.7,
-    "nseLow52": 2728.7,
+    "nseLow52": 2750.0,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -401,7 +401,7 @@
   {
     "ticker": "HEROMOTOCO",
     "nseHigh52": 6388.5,
-    "nseLow52": 4195.0,
+    "nseLow52": 4201.0,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -428,7 +428,7 @@
   },
   {
     "ticker": "DIVISLAB",
-    "nseHigh52": 7438.5,
+    "nseHigh52": 7459.0,
     "nseLow52": 5636.5,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -470,7 +470,7 @@
   },
   {
     "ticker": "GAIL",
-    "nseHigh52": 188.89,
+    "nseHigh52": 186.87,
     "nseLow52": 134.36,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -512,14 +512,14 @@
   },
   {
     "ticker": "UNITDSPR",
-    "nseHigh52": 1488.0,
+    "nseHigh52": 1503.5,
     "nseLow52": 1210.8,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "IRCTC",
-    "nseHigh52": 765.7,
+    "nseHigh52": 750.0,
     "nseLow52": 488.55,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -547,14 +547,14 @@
   },
   {
     "ticker": "RECLTD",
-    "nseHigh52": 408.25,
+    "nseHigh52": 403.6,
     "nseLow52": 304.05,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "SRF",
-    "nseHigh52": 3260.4,
+    "nseHigh52": 3210.0,
     "nseLow52": 2355.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -603,7 +603,7 @@
   },
   {
     "ticker": "NAUKRI",
-    "nseHigh52": 1485.0,
+    "nseHigh52": 1437.8,
     "nseLow52": 908.3,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -778,14 +778,14 @@
   },
   {
     "ticker": "IDFCFIRSTB",
-    "nseHigh52": 87.0,
+    "nseHigh52": 88.76,
     "nseLow52": 58.08,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "FEDERALBNK",
-    "nseHigh52": 357.25,
+    "nseHigh52": 357.7,
     "nseLow52": 185.11,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -932,7 +932,7 @@
   },
   {
     "ticker": "IRFC",
-    "nseHigh52": 138.0,
+    "nseHigh52": 137.17,
     "nseLow52": 86.02,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -960,7 +960,7 @@
   },
   {
     "ticker": "CONCOR",
-    "nseHigh52": 612.0,
+    "nseHigh52": 601.8,
     "nseLow52": 421.45,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -988,7 +988,7 @@
   },
   {
     "ticker": "TATAELXSI",
-    "nseHigh52": 6259.5,
+    "nseHigh52": 6169.5,
     "nseLow52": 3353.9,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1002,7 +1002,7 @@
   },
   {
     "ticker": "CYIENT",
-    "nseHigh52": 1301.7,
+    "nseHigh52": 1284.7,
     "nseLow52": 750.3,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1030,7 +1030,7 @@
   },
   {
     "ticker": "ROUTE",
-    "nseHigh52": 944.4,
+    "nseHigh52": 930.0,
     "nseLow52": 410.7,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1198,28 +1198,28 @@
   },
   {
     "ticker": "WHIRLPOOL",
-    "nseHigh52": 1446.9,
+    "nseHigh52": 1437.0,
     "nseLow52": 753.15,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "CROMPTON",
-    "nseHigh52": 339.8,
+    "nseHigh52": 337.5,
     "nseLow52": 217.4,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "ORIENTELEC",
-    "nseHigh52": 226.2,
+    "nseHigh52": 224.87,
     "nseLow52": 149.05,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "VGUARD",
-    "nseHigh52": 409.75,
+    "nseHigh52": 405.2,
     "nseLow52": 288.8,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1240,7 +1240,7 @@
   },
   {
     "ticker": "CERA",
-    "nseHigh52": 6825.0,
+    "nseHigh52": 6740.0,
     "nseLow52": 4461.1,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1254,7 +1254,7 @@
   },
   {
     "ticker": "BRIGADE",
-    "nseHigh52": 802.5,
+    "nseHigh52": 802.01,
     "nseLow52": 450.75,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1296,7 +1296,7 @@
   },
   {
     "ticker": "LODHA",
-    "nseHigh52": 1337.0,
+    "nseHigh52": 1327.6,
     "nseLow52": 650.8,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1338,7 +1338,7 @@
   },
   {
     "ticker": "RADICO",
-    "nseHigh52": 4193.0,
+    "nseHigh52": 4201.0,
     "nseLow52": 2500.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1359,7 +1359,7 @@
   },
   {
     "ticker": "DEEPAKNTR",
-    "nseHigh52": 1945.9,
+    "nseHigh52": 1916.7,
     "nseLow52": 1280.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1499,9 +1499,9 @@
   },
   {
     "ticker": "LAURUSLABS",
-    "nseHigh52": 1610.0,
+    "nseHigh52": 1734.5,
     "nseLow52": 810.05,
-    "high52DiffPct": 7.73,
+    "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
@@ -1534,7 +1534,7 @@
   },
   {
     "ticker": "SANOFI",
-    "nseHigh52": 5955.0,
+    "nseHigh52": 5924.5,
     "nseLow52": 3054.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1548,7 +1548,7 @@
   },
   {
     "ticker": "GLAXO",
-    "nseHigh52": 3220.0,
+    "nseHigh52": 3200.0,
     "nseLow52": 2088.1,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1569,9 +1569,9 @@
   },
   {
     "ticker": "LALPATHLAB",
-    "nseHigh52": 1803.0,
+    "nseHigh52": 1894.9,
     "nseLow52": 1272.6,
-    "high52DiffPct": 5.1,
+    "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
@@ -1590,7 +1590,7 @@
   },
   {
     "ticker": "RAINBOW",
-    "nseHigh52": 1645.7,
+    "nseHigh52": 1593.7,
     "nseLow52": 1084.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1660,7 +1660,7 @@
   },
   {
     "ticker": "INDOCO",
-    "nseHigh52": 336.0,
+    "nseHigh52": 332.2,
     "nseLow52": 162.19,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1702,7 +1702,7 @@
   },
   {
     "ticker": "UTIAMC",
-    "nseHigh52": 1425.0,
+    "nseHigh52": 1418.0,
     "nseLow52": 876.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1744,7 +1744,7 @@
   },
   {
     "ticker": "CDSL",
-    "nseHigh52": 1698.9,
+    "nseHigh52": 1673.7,
     "nseLow52": 1116.3,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1765,14 +1765,14 @@
   },
   {
     "ticker": "CAMS",
-    "nseHigh52": 848.4,
+    "nseHigh52": 844.9,
     "nseLow52": 611.4,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "KFINTECH",
-    "nseHigh52": 1263.5,
+    "nseHigh52": 1215.0,
     "nseLow52": 784.95,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1793,7 +1793,7 @@
   },
   {
     "ticker": "MANAPPURAM",
-    "nseHigh52": 356.7,
+    "nseHigh52": 361.5,
     "nseLow52": 245.15,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1814,7 +1814,7 @@
   },
   {
     "ticker": "CHOLAHLDNG",
-    "nseHigh52": 2092.6,
+    "nseHigh52": 2064.0,
     "nseLow52": 1305.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1828,7 +1828,7 @@
   },
   {
     "ticker": "LICHSGFIN",
-    "nseHigh52": 622.4,
+    "nseHigh52": 612.45,
     "nseLow52": 458.9,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1856,16 +1856,16 @@
   },
   {
     "ticker": "AAVAS",
-    "nseHigh52": 1913.1,
+    "nseHigh52": 1856.7,
     "nseLow52": 1060.4,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "HOMEFIRST",
-    "nseHigh52": 1519.0,
+    "nseHigh52": 1441.0,
     "nseLow52": 893.7,
-    "high52DiffPct": -5.13,
+    "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
@@ -1884,7 +1884,7 @@
   },
   {
     "ticker": "CREDITACC",
-    "nseHigh52": 1608.1,
+    "nseHigh52": 1614.0,
     "nseLow52": 1113.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1898,7 +1898,7 @@
   },
   {
     "ticker": "UJJIVANSFB",
-    "nseHigh52": 72.24,
+    "nseHigh52": 73.29,
     "nseLow52": 41.32,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2045,7 +2045,7 @@
   },
   {
     "ticker": "GODREJAGRO",
-    "nseHigh52": 876.35,
+    "nseHigh52": 867.15,
     "nseLow52": 506.1,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2059,21 +2059,21 @@
   },
   {
     "ticker": "BASF",
-    "nseHigh52": 5200.0,
+    "nseHigh52": 5150.0,
     "nseLow52": 3122.2,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "CLEAN",
-    "nseHigh52": 1308.4,
+    "nseHigh52": 1256.8,
     "nseLow52": 652.0,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "VINATIORGA",
-    "nseHigh52": 1997.9,
+    "nseHigh52": 1909.8,
     "nseLow52": 1203.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2206,7 +2206,7 @@
   },
   {
     "ticker": "RKFORGE",
-    "nseHigh52": 632.6,
+    "nseHigh52": 635.55,
     "nseLow52": 460.15,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2234,7 +2234,7 @@
   },
   {
     "ticker": "RATNAVEER",
-    "nseHigh52": 197.0,
+    "nseHigh52": 204.0,
     "nseLow52": 130.5,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2269,14 +2269,14 @@
   },
   {
     "ticker": "SURYAROSNI",
-    "nseHigh52": 351.2,
+    "nseHigh52": 344.4,
     "nseLow52": 187.35,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "GREENPLY",
-    "nseHigh52": 351.95,
+    "nseHigh52": 349.0,
     "nseLow52": 176.42,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2299,7 +2299,7 @@
     "ticker": "ORIENTCEM",
     "nseHigh52": 267.8,
     "nseLow52": 122.32,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.15,
     "low52DiffPct": null
   },
   {
@@ -2347,7 +2347,7 @@
   {
     "ticker": "TRIVENI",
     "nseHigh52": 490.1,
-    "nseLow52": 248.7,
+    "nseLow52": 236.3,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -2472,9 +2472,9 @@
   },
   {
     "ticker": "ZEEL",
-    "nseHigh52": 131.2,
+    "nseHigh52": 124.14,
     "nseLow52": 68.0,
-    "high52DiffPct": -5.38,
+    "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
@@ -2493,7 +2493,7 @@
   },
   {
     "ticker": "INOXWIND",
-    "nseHigh52": 165.05,
+    "nseHigh52": 161.39,
     "nseLow52": 75.05,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2521,7 +2521,7 @@
   },
   {
     "ticker": "RTNPOWER",
-    "nseHigh52": 14.17,
+    "nseHigh52": 13.59,
     "nseLow52": 7.52,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2542,14 +2542,14 @@
   },
   {
     "ticker": "TRIDENT",
-    "nseHigh52": 33.66,
+    "nseHigh52": 31.89,
     "nseLow52": 21.98,
-    "high52DiffPct": -5.26,
+    "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "RAYMOND",
-    "nseHigh52": 731.15,
+    "nseHigh52": 702.9,
     "nseLow52": 320.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2584,7 +2584,7 @@
   },
   {
     "ticker": "RUPA",
-    "nseHigh52": 221.6,
+    "nseHigh52": 219.87,
     "nseLow52": 109.21,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2626,7 +2626,7 @@
   },
   {
     "ticker": "TCI",
-    "nseHigh52": 1242.3,
+    "nseHigh52": 1242.0,
     "nseLow52": 868.05,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2642,7 +2642,7 @@
     "ticker": "SNOWMAN",
     "nseHigh52": 64.05,
     "nseLow52": 30.5,
-    "high52DiffPct": null,
+    "high52DiffPct": -6.64,
     "low52DiffPct": null
   },
   {
@@ -2682,14 +2682,14 @@
   },
   {
     "ticker": "NCC",
-    "nseHigh52": 226.55,
+    "nseHigh52": 225.95,
     "nseLow52": 130.0,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
   {
     "ticker": "IRB",
-    "nseHigh52": 24.41,
+    "nseHigh52": 23.95,
     "nseLow52": 19.15,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2703,7 +2703,7 @@
   },
   {
     "ticker": "HGINFRA",
-    "nseHigh52": 1086.3,
+    "nseHigh52": 1065.5,
     "nseLow52": 429.5,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2759,7 +2759,7 @@
   },
   {
     "ticker": "TEXRAIL",
-    "nseHigh52": 160.2,
+    "nseHigh52": 153.9,
     "nseLow52": 78.05,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2794,7 +2794,7 @@
   },
   {
     "ticker": "HONAUT",
-    "nseHigh52": 40895.0,
+    "nseHigh52": 40480.0,
     "nseLow52": 26220.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2837,7 +2837,7 @@
   {
     "ticker": "YATRA",
     "nseHigh52": 202.0,
-    "nseLow52": 88.84,
+    "nseLow52": 89.63,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -2878,7 +2878,7 @@
   },
   {
     "ticker": "SONATSOFTW",
-    "nseHigh52": 433.15,
+    "nseHigh52": 421.5,
     "nseLow52": 207.15,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2941,9 +2941,9 @@
   },
   {
     "ticker": "GENSOL",
-    "nseHigh52": 55.77,
-    "nseLow52": 18.16,
-    "high52DiffPct": -12.64,
+    "nseHigh52": 46.28,
+    "nseLow52": 17.44,
+    "high52DiffPct": null,
     "low52DiffPct": null
   }
 ]
