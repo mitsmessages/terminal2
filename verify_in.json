@@ -65,7 +65,7 @@
   {
     "ticker": "HINDUNILVR",
     "nseHigh52": 2750.0,
-    "nseLow52": 2022.5,
+    "nseLow52": 2016.0,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -99,7 +99,7 @@
   },
   {
     "ticker": "SUNPHARMA",
-    "nseHigh52": 1977.0,
+    "nseHigh52": 1993.0,
     "nseLow52": 1548.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -141,7 +141,7 @@
   },
   {
     "ticker": "TITAN",
-    "nseHigh52": 4749.1,
+    "nseHigh52": 4860.0,
     "nseLow52": 3303.1,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -302,7 +302,7 @@
   },
   {
     "ticker": "BAJAJ-AUTO",
-    "nseHigh52": 11331.0,
+    "nseHigh52": 11410.5,
     "nseLow52": 7858.5,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -330,7 +330,7 @@
   },
   {
     "ticker": "PIDILITIND",
-    "nseHigh52": 1626.7,
+    "nseHigh52": 1632.7,
     "nseLow52": 1259.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -428,7 +428,7 @@
   },
   {
     "ticker": "DIVISLAB",
-    "nseHigh52": 7459.0,
+    "nseHigh52": 7479.0,
     "nseLow52": 5636.5,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -512,7 +512,7 @@
   },
   {
     "ticker": "UNITDSPR",
-    "nseHigh52": 1503.5,
+    "nseHigh52": 1511.9,
     "nseLow52": 1210.8,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -520,7 +520,7 @@
   {
     "ticker": "IRCTC",
     "nseHigh52": 750.0,
-    "nseLow52": 488.55,
+    "nseLow52": 485.3,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -568,7 +568,7 @@
   },
   {
     "ticker": "MARICO",
-    "nseHigh52": 873.0,
+    "nseHigh52": 886.3,
     "nseLow52": 690.2,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -785,7 +785,7 @@
   },
   {
     "ticker": "FEDERALBNK",
-    "nseHigh52": 357.7,
+    "nseHigh52": 358.7,
     "nseLow52": 185.11,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -947,7 +947,7 @@
   {
     "ticker": "RVNL",
     "nseHigh52": 400.7,
-    "nseLow52": 220.84,
+    "nseLow52": 220.16,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -1338,7 +1338,7 @@
   },
   {
     "ticker": "RADICO",
-    "nseHigh52": 4201.0,
+    "nseHigh52": 4350.0,
     "nseLow52": 2500.0,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1444,7 +1444,7 @@
   {
     "ticker": "RALLIS",
     "nseHigh52": 385.9,
-    "nseLow52": 215.5,
+    "nseLow52": 214.85,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -1499,7 +1499,7 @@
   },
   {
     "ticker": "LAURUSLABS",
-    "nseHigh52": 1734.5,
+    "nseHigh52": 1762.0,
     "nseLow52": 810.05,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1793,7 +1793,7 @@
   },
   {
     "ticker": "MANAPPURAM",
-    "nseHigh52": 361.5,
+    "nseHigh52": 363.0,
     "nseLow52": 245.15,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2206,7 +2206,7 @@
   },
   {
     "ticker": "RKFORGE",
-    "nseHigh52": 635.55,
+    "nseHigh52": 641.0,
     "nseLow52": 460.15,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2234,7 +2234,7 @@
   },
   {
     "ticker": "RATNAVEER",
-    "nseHigh52": 204.0,
+    "nseHigh52": 207.79,
     "nseLow52": 130.5,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -2347,7 +2347,7 @@
   {
     "ticker": "TRIVENI",
     "nseHigh52": 490.1,
-    "nseLow52": 236.3,
+    "nseLow52": 228.05,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -2439,7 +2439,7 @@
     "ticker": "VADILALIND",
     "nseHigh52": 6997.0,
     "nseLow52": 3996.0,
-    "high52DiffPct": null,
+    "high52DiffPct": 5.37,
     "low52DiffPct": null
   },
   {
@@ -2676,7 +2676,7 @@
   {
     "ticker": "KEC",
     "nseHigh52": 937.8,
-    "nseLow52": 462.4,
+    "nseLow52": 460.3,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -2816,7 +2816,7 @@
   {
     "ticker": "INDIAMART",
     "nseHigh52": 2685.0,
-    "nseLow52": 1751.1,
+    "nseLow52": 1740.0,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -2853,7 +2853,7 @@
     "nseHigh52": 5244.0,
     "nseLow52": 1812.5,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 7.53
   },
   {
     "ticker": "RATEGAIN",
