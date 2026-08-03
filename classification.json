@@ -1,5 +1,5 @@
 {
-  "asOf": "2026-07-27 21:43 UTC",
+  "asOf": "2026-08-03 21:35 UTC",
   "source": "NSE / Nifty Indices official constituent files",
   "indices": {
     "NIFTY50": [
@@ -2588,7 +2588,7 @@
     },
     "ASTERDM": {
       "industry": "Healthcare",
-      "name": "Aster DM Healthcare Ltd.",
+      "name": "Aster DM Quality Care Ltd.",
       "isin": "INE914M01019"
     },
     "ATHERENERG": {
