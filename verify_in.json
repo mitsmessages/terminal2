@@ -535,7 +535,7 @@
     "ticker": "MOTHERSON",
     "nseHigh52": 157.99,
     "nseLow52": 89.7,
-    "high52DiffPct": null,
+    "high52DiffPct": 7.48,
     "low52DiffPct": null
   },
   {
@@ -1410,7 +1410,7 @@
     "ticker": "COROMANDEL",
     "nseHigh52": 2647.0,
     "nseLow52": 1706.5,
-    "high52DiffPct": -5.33,
+    "high52DiffPct": -5.55,
     "low52DiffPct": null
   },
   {
@@ -1452,7 +1452,7 @@
     "ticker": "BAYERCROP",
     "nseHigh52": 6415.0,
     "nseLow52": 4030.0,
-    "high52DiffPct": -6.17,
+    "high52DiffPct": -10.6,
     "low52DiffPct": null
   },
   {
@@ -2460,7 +2460,7 @@
     "ticker": "HTMEDIA",
     "nseHigh52": 31.3,
     "nseLow52": 17.52,
-    "high52DiffPct": -6.07,
+    "high52DiffPct": -8.5,
     "low52DiffPct": null
   },
   {
@@ -2859,7 +2859,7 @@
     "ticker": "RATEGAIN",
     "nseHigh52": 1050.0,
     "nseLow52": 417.6,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.02,
     "low52DiffPct": null
   },
   {
