@@ -6368,5 +6368,18 @@
     "netIncomeDiffPct": null,
     "assetsDiffPct": null,
     "liabilitiesDiffPct": null
+  },
+  {
+    "ticker": "PARA",
+    "secRevenue": null,
+    "secNetIncome": null,
+    "secAssets": null,
+    "secLiabilities": null,
+    "secRevenueDate": null,
+    "secNetIncomeDate": null,
+    "revenueDiffPct": null,
+    "netIncomeDiffPct": null,
+    "assetsDiffPct": null,
+    "liabilitiesDiffPct": null
   }
 ]
