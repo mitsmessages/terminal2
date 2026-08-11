@@ -277,7 +277,7 @@
     "nseHigh52": 254.2,
     "nseLow52": 110.45,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 5.22
   },
   {
     "ticker": "HDFCLIFE",
@@ -822,7 +822,7 @@
     "ticker": "PAYTM",
     "nseHigh52": 1459.5,
     "nseLow52": 930.6,
-    "high52DiffPct": 9.52,
+    "high52DiffPct": 12.36,
     "low52DiffPct": null
   },
   {
@@ -883,7 +883,7 @@
   },
   {
     "ticker": "SUZLON",
-    "nseHigh52": 66.81,
+    "nseHigh52": 65.26,
     "nseLow52": 38.19,
     "high52DiffPct": null,
     "low52DiffPct": null
@@ -1116,7 +1116,7 @@
     "ticker": "SUNDRMFAST",
     "nseHigh52": 1109.45,
     "nseLow52": 730.1,
-    "high52DiffPct": null,
+    "high52DiffPct": 10.51,
     "low52DiffPct": null
   },
   {
@@ -1627,7 +1627,7 @@
     "ticker": "GLAND",
     "nseHigh52": 2634.3,
     "nseLow52": 1573.6,
-    "high52DiffPct": null,
+    "high52DiffPct": 13.44,
     "low52DiffPct": null
   },
   {
@@ -1719,7 +1719,7 @@
     "nseHigh52": 2176.2,
     "nseLow52": 1270.0,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 5.04
   },
   {
     "ticker": "MOTILALOFS",
@@ -2720,7 +2720,7 @@
     "nseHigh52": 320.0,
     "nseLow52": 185.32,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 5.23
   },
   {
     "ticker": "JSWHL",
