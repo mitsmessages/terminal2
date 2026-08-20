@@ -1,13 +1,13 @@
 {
-  "asOf": "2026-08-19 20:44 UTC",
+  "asOf": "2026-08-20 20:45 UTC",
   "series": {
     "us10y": {
       "label": "US 10-Year Treasury Yield",
       "unit": "%",
-      "current": 4.65,
+      "current": 4.7,
       "chg30d": null,
       "chg90d": null,
-      "level1yPct": 38.3
+      "level1yPct": 80.0
     },
     "us3m": {
       "label": "US 3-Month Yield",
@@ -20,50 +20,50 @@
     "crude": {
       "label": "Crude Oil (WTI)",
       "unit": "$/bbl",
-      "current": 84.27,
-      "chg30d": 1.25,
-      "chg90d": -12.54,
-      "level1yPct": 50.3
+      "current": 86.5,
+      "chg30d": 1.87,
+      "chg90d": -10.46,
+      "level1yPct": 54.1
     },
     "usdinr": {
       "label": "USD/INR",
       "unit": "\u20b9",
-      "current": 95.74,
-      "chg30d": -0.56,
-      "chg90d": -0.81,
-      "level1yPct": 88.5
+      "current": 95.69,
+      "chg30d": -0.82,
+      "chg90d": -0.5,
+      "level1yPct": 88.0
     },
     "dxy": {
       "label": "US Dollar Index",
       "unit": "",
-      "current": 98.81,
-      "chg30d": -2.16,
-      "chg90d": -0.38,
-      "level1yPct": 48.1
+      "current": 98.88,
+      "chg30d": -2.09,
+      "chg90d": -0.44,
+      "level1yPct": 49.4
     },
     "vix": {
       "label": "VIX (Volatility Index)",
       "unit": "",
-      "current": 14.89,
-      "chg30d": -20.16,
-      "chg90d": -11.16,
-      "level1yPct": 8.1
+      "current": 16.01,
+      "chg30d": -14.16,
+      "chg90d": -4.13,
+      "level1yPct": 14.4
     },
     "gold": {
       "label": "Gold",
       "unit": "$/oz",
-      "current": 4581.3,
-      "chg30d": 14.24,
-      "chg90d": 0.91,
-      "level1yPct": 63.2
+      "current": 4573.9,
+      "chg30d": 12.35,
+      "chg90d": 1.17,
+      "level1yPct": 62.4
     },
     "copper": {
       "label": "Copper",
       "unit": "$/lb",
-      "current": 6.5,
-      "chg30d": 3.22,
-      "chg90d": 3.92,
-      "level1yPct": 91.2
+      "current": 6.48,
+      "chg30d": -0.44,
+      "chg90d": 2.22,
+      "level1yPct": 90.3
     },
     "in10y": {
       "label": "India 10-Year G-Sec (manual constant, updated 2026-07)",
