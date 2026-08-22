@@ -1053,7 +1053,7 @@
     "ticker": "JKCEMENT",
     "nseHigh52": 7565.5,
     "nseLow52": 4671.5,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.83,
     "low52DiffPct": null
   },
   {
@@ -2853,7 +2853,7 @@
     "nseHigh52": 5449.9,
     "nseLow52": 2037.3,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 7.53
   },
   {
     "ticker": "RATEGAIN",
