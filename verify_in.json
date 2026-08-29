@@ -809,7 +809,7 @@
     "nseHigh52": 394.5,
     "nseLow52": 243.25,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 6.5
   },
   {
     "ticker": "YESBANK",
@@ -1642,7 +1642,7 @@
     "nseHigh52": 910.0,
     "nseLow52": 466.0,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 5.68
   },
   {
     "ticker": "IPCALAB",
