@@ -248,7 +248,7 @@
     "ticker": "TRENT",
     "nseHigh52": 3782.67,
     "nseLow52": 2183.67,
-    "high52DiffPct": 48.49,
+    "high52DiffPct": 46.87,
     "low52DiffPct": null
   },
   {
@@ -1019,7 +1019,7 @@
     "nseHigh52": 481.5,
     "nseLow52": 312.55,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 7.15
   },
   {
     "ticker": "HFCL",
@@ -1074,7 +1074,7 @@
     "ticker": "JKLAKSHMI",
     "nseHigh52": 989.8,
     "nseLow52": 512.0,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.37,
     "low52DiffPct": null
   },
   {
@@ -2195,7 +2195,7 @@
     "nseHigh52": 4084.9,
     "nseLow52": 1287.3,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 5.97
   },
   {
     "ticker": "JAMNAAUTO",
@@ -2853,7 +2853,7 @@
     "nseHigh52": 5813.0,
     "nseLow52": 2281.8,
     "high52DiffPct": null,
-    "low52DiffPct": 14.6
+    "low52DiffPct": 23.69
   },
   {
     "ticker": "RATEGAIN",
