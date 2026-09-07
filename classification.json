@@ -1,5 +1,5 @@
 {
-  "asOf": "2026-08-24 21:10 UTC",
+  "asOf": "2026-09-07 23:14 UTC",
   "source": "NSE / Nifty Indices official constituent files",
   "indices": {
     "NIFTY50": [
@@ -508,6 +508,7 @@
       "DIXON",
       "LALPATHLAB",
       "DRREDDY",
+      "DUMMYHEG",
       "EIDPARRY",
       "EIHOTEL",
       "EICHERMOT",
@@ -555,13 +556,13 @@
       "GESHIP",
       "FLUOROCHEM",
       "GMDCLTD",
-      "HEG",
       "HBLENGINE",
       "HCLTECH",
       "HDBFS",
       "HDFCAMC",
       "HDFCBANK",
       "HDFCLIFE",
+      "HEG",
       "HFCL",
       "HAVELLS",
       "HEROMOTOCO",
@@ -1091,6 +1092,7 @@
       "DELHIVERY",
       "DEVYANI",
       "LALPATHLAB",
+      "DUMMYHEG",
       "EIDPARRY",
       "EIHOTEL",
       "ELECON",
@@ -1117,8 +1119,8 @@
       "GRAVITA",
       "GESHIP",
       "GMDCLTD",
-      "HEG",
       "HBLENGINE",
+      "HEG",
       "HFCL",
       "HSCL",
       "HINDCOPPER",
@@ -2896,6 +2898,11 @@
       "name": "Dr. Lal Path Labs Ltd.",
       "isin": "INE600L01024"
     },
+    "DUMMYHEG": {
+      "industry": "Metals & Mining",
+      "name": "Dummy HEG Ltd.",
+      "isin": "DUM545A01024"
+    },
     "EIDPARRY": {
       "industry": "Fast Moving Consumer Goods",
       "name": "E.I.D. Parry (India) Ltd.",
@@ -3061,11 +3068,6 @@
       "name": "Gujarat Mineral Development Corporation Ltd.",
       "isin": "INE131A01031"
     },
-    "HEG": {
-      "industry": "Capital Goods",
-      "name": "H.E.G. Ltd.",
-      "isin": "INE545A01024"
-    },
     "HBLENGINE": {
       "industry": "Capital Goods",
       "name": "HBL Engineering Ltd.",
@@ -3075,6 +3077,11 @@
       "industry": "Financial Services",
       "name": "HDB Financial Services Ltd.",
       "isin": "INE756I01012"
+    },
+    "HEG": {
+      "industry": "Capital Goods",
+      "name": "HEG Ltd.",
+      "isin": "INE545A01024"
     },
     "HFCL": {
       "industry": "Telecommunication",
