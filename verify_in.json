@@ -893,7 +893,7 @@
     "nseHigh52": 446.5,
     "nseLow52": 214.05,
     "high52DiffPct": null,
-    "low52DiffPct": 5.96
+    "low52DiffPct": 6.66
   },
   {
     "ticker": "BEML",
@@ -2292,7 +2292,7 @@
     "ticker": "GREENPANEL",
     "nseHigh52": 333.8,
     "nseLow52": 154.55,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.17,
     "low52DiffPct": null
   },
   {
