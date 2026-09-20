@@ -1752,7 +1752,7 @@
   {
     "ticker": "MCX",
     "nseHigh52": 3480.0,
-    "nseLow52": 1521.4,
+    "nseLow52": 1536.6,
     "high52DiffPct": null,
     "low52DiffPct": null
   },
@@ -1996,7 +1996,7 @@
   },
   {
     "ticker": "JUBLFOOD",
-    "nseHigh52": 637.3,
+    "nseHigh52": 636.0,
     "nseLow52": 408.55,
     "high52DiffPct": null,
     "low52DiffPct": null
