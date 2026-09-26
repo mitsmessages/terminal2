@@ -2320,7 +2320,7 @@
     "ticker": "SAGCEM",
     "nseHigh52": 274.05,
     "nseLow52": 141.52,
-    "high52DiffPct": -5.07,
+    "high52DiffPct": -5.82,
     "low52DiffPct": null
   },
   {
@@ -2943,7 +2943,7 @@
     "ticker": "GENSOL",
     "nseHigh52": 41.52,
     "nseLow52": 16.4,
-    "high52DiffPct": 5.27,
+    "high52DiffPct": null,
     "low52DiffPct": null
   }
 ]
