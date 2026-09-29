@@ -1,69 +1,69 @@
 {
-  "asOf": "2026-09-27 23:07 UTC",
+  "asOf": "2026-09-29 00:30 UTC",
   "series": {
     "us10y": {
       "label": "US 10-Year Treasury Yield",
       "unit": "%",
-      "current": 5.18,
-      "chg30d": 11.15,
-      "chg90d": 18.57,
-      "level1yPct": 99.7
+      "current": 5.24,
+      "chg30d": 11.02,
+      "chg90d": 18.61,
+      "level1yPct": 100.0
     },
     "us3m": {
       "label": "US 3-Month Yield",
       "unit": "%",
-      "current": 4.07,
-      "chg30d": 10.3,
-      "chg90d": 11.11,
-      "level1yPct": 100.0
+      "current": 4.06,
+      "chg30d": 8.77,
+      "chg90d": 8.71,
+      "level1yPct": 98.2
     },
     "crude": {
       "label": "Crude Oil (WTI)",
       "unit": "$/bbl",
-      "current": 93.54,
-      "chg30d": 12.16,
-      "chg90d": 32.21,
-      "level1yPct": 66.3
+      "current": 93.4,
+      "chg30d": 11.99,
+      "chg90d": 34.39,
+      "level1yPct": 66.1
     },
     "usdinr": {
       "label": "USD/INR",
       "unit": "\u20b9",
-      "current": 95.8,
-      "chg30d": 0.35,
-      "chg90d": 1.53,
-      "level1yPct": 88.2
+      "current": 95.97,
+      "chg30d": 0.53,
+      "chg90d": 1.11,
+      "level1yPct": 90.1
     },
     "dxy": {
       "label": "US Dollar Index",
       "unit": "",
-      "current": 100.97,
-      "chg30d": 1.82,
-      "chg90d": -0.38,
-      "level1yPct": 88.1
+      "current": 101.25,
+      "chg30d": 1.56,
+      "chg90d": 0.06,
+      "level1yPct": 93.3
     },
     "vix": {
       "label": "VIX (Volatility Index)",
       "unit": "",
-      "current": 14.87,
-      "chg30d": -2.24,
-      "chg90d": -19.23,
-      "level1yPct": 8.0
+      "current": 16.07,
+      "chg30d": 11.37,
+      "chg90d": -2.31,
+      "level1yPct": 14.8
     },
     "gold": {
       "label": "Gold",
       "unit": "$/oz",
-      "current": 4293.5,
-      "chg30d": -5.22,
-      "chg90d": 6.3,
-      "level1yPct": 30.0
+      "current": 4149.8,
+      "chg30d": -8.39,
+      "chg90d": 2.76,
+      "level1yPct": 20.1
     },
     "copper": {
       "label": "Copper",
       "unit": "$/lb",
-      "current": 6.74,
-      "chg30d": 2.69,
-      "chg90d": 10.51,
-      "level1yPct": 96.8
+      "current": 6.61,
+      "chg30d": 0.75,
+      "chg90d": 6.77,
+      "level1yPct": 90.3
     },
     "in10y": {
       "label": "India 10-Year G-Sec (manual constant, updated 2026-07)",
