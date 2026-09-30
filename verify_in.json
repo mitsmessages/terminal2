@@ -795,7 +795,7 @@
     "nseHigh52": 178.36,
     "nseLow52": 116.26,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 5.11
   },
   {
     "ticker": "AUBANK",
@@ -2033,7 +2033,7 @@
     "ticker": "WESTLIFE",
     "nseHigh52": 763.8,
     "nseLow52": 398.4,
-    "high52DiffPct": -8.62,
+    "high52DiffPct": -9.01,
     "low52DiffPct": null
   },
   {
@@ -2075,7 +2075,7 @@
     "ticker": "VINATIORGA",
     "nseHigh52": 1849.9,
     "nseLow52": 1172.4,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.99,
     "low52DiffPct": null
   },
   {
@@ -2334,7 +2334,7 @@
     "ticker": "TNPL",
     "nseHigh52": 175.75,
     "nseLow52": 121.51,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.17,
     "low52DiffPct": null
   },
   {
