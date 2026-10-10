@@ -871,7 +871,7 @@
     "ticker": "KAYNES",
     "nseHigh52": 7609.0,
     "nseLow52": 2995.0,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.6,
     "low52DiffPct": null
   },
   {
@@ -1754,14 +1754,14 @@
     "nseHigh52": 3481.4,
     "nseLow52": 1626.0,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 5.97
   },
   {
     "ticker": "BSE",
     "nseHigh52": 4446.8,
     "nseLow52": 2210.0,
     "high52DiffPct": null,
-    "low52DiffPct": null
+    "low52DiffPct": 5.25
   },
   {
     "ticker": "CAMS",
