@@ -871,7 +871,7 @@
     "ticker": "KAYNES",
     "nseHigh52": 7609.0,
     "nseLow52": 2995.0,
-    "high52DiffPct": -5.6,
+    "high52DiffPct": -6.2,
     "low52DiffPct": null
   },
   {
@@ -2033,7 +2033,7 @@
     "ticker": "WESTLIFE",
     "nseHigh52": 683.3,
     "nseLow52": 398.4,
-    "high52DiffPct": null,
+    "high52DiffPct": -5.61,
     "low52DiffPct": null
   },
   {
@@ -2943,7 +2943,7 @@
     "ticker": "GENSOL",
     "nseHigh52": 37.46,
     "nseLow52": 11.16,
-    "high52DiffPct": 5.29,
+    "high52DiffPct": null,
     "low52DiffPct": null
   }
 ]
