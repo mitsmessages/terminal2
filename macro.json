@@ -1,68 +1,68 @@
 {
-  "asOf": "2026-10-11 23:49 UTC",
+  "asOf": "2026-10-13 02:07 UTC",
   "series": {
     "us10y": {
       "label": "US 10-Year Treasury Yield",
       "unit": "%",
       "current": 5.24,
-      "chg30d": 8.41,
-      "chg90d": 14.77,
+      "chg30d": 5.33,
+      "chg90d": 14.29,
       "level1yPct": 94.8
     },
     "us3m": {
       "label": "US 3-Month Yield",
       "unit": "%",
-      "current": 4.06,
-      "chg30d": 6.62,
-      "chg90d": 9.8,
-      "level1yPct": 98.2
+      "current": 4.05,
+      "chg30d": 3.5,
+      "chg90d": 9.46,
+      "level1yPct": 96.4
     },
     "crude": {
       "label": "Crude Oil (WTI)",
       "unit": "$/bbl",
-      "current": 90.96,
-      "chg30d": -9.09,
-      "chg90d": 16.41,
-      "level1yPct": 61.9
+      "current": 92.51,
+      "chg30d": -7.54,
+      "chg90d": 16.6,
+      "level1yPct": 64.6
     },
     "usdinr": {
       "label": "USD/INR",
       "unit": "\u20b9",
-      "current": 96.78,
-      "chg30d": 1.13,
-      "chg90d": 1.53,
-      "level1yPct": 98.9
+      "current": 95.76,
+      "chg30d": 0.07,
+      "chg90d": -0.69,
+      "level1yPct": 87.8
     },
     "dxy": {
       "label": "US Dollar Index",
       "unit": "",
-      "current": 102.19,
-      "chg30d": 3.1,
-      "chg90d": 0.9,
-      "level1yPct": 99.2
+      "current": 102.44,
+      "chg30d": 3.35,
+      "chg90d": 1.49,
+      "level1yPct": 99.9
     },
     "vix": {
       "label": "VIX (Volatility Index)",
       "unit": "",
-      "current": 14.84,
-      "chg30d": -9.84,
-      "chg90d": -1.26,
-      "level1yPct": 7.8
+      "current": 15.21,
+      "chg30d": -3.98,
+      "chg90d": -7.82,
+      "level1yPct": 9.9
     },
     "gold": {
       "label": "Gold",
       "unit": "$/oz",
-      "current": 4221.8,
-      "chg30d": -4.24,
-      "chg90d": 5.39,
-      "level1yPct": 19.2
+      "current": 4181.8,
+      "chg30d": -5.15,
+      "chg90d": 2.75,
+      "level1yPct": 16.3
     },
     "copper": {
       "label": "Copper",
       "unit": "$/lb",
       "current": 6.71,
-      "chg30d": 3.78,
-      "chg90d": 7.72,
+      "chg30d": 3.66,
+      "chg90d": 5.95,
       "level1yPct": 95.0
     },
     "in10y": {
