@@ -2124,7 +2124,7 @@
     "ticker": "TATAINVEST",
     "nseHigh52": 1082.0,
     "nseLow52": 538.85,
-    "high52DiffPct": null,
+    "high52DiffPct": -6.47,
     "low52DiffPct": null
   },
   {
@@ -2145,7 +2145,7 @@
     "ticker": "SKFINDIA",
     "nseHigh52": 5074.0,
     "nseLow52": 1386.4,
-    "high52DiffPct": null,
+    "high52DiffPct": -54.67,
     "low52DiffPct": null
   },
   {
@@ -2383,7 +2383,7 @@
     "ticker": "UTTAMSUGAR",
     "nseHigh52": 380.9,
     "nseLow52": 181.1,
-    "high52DiffPct": null,
+    "high52DiffPct": 5.28,
     "low52DiffPct": null
   },
   {
